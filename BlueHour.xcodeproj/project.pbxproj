@@ -11,9 +11,9 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		F98843992FD1A56500C0429D /* BlueHour */ = {
+		F98843992FD1A56500C0429D /* App */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = BlueHour;
+			path = App;
 			sourceTree = "<group>";
 		};
 		F98843A82FD1A59400C0429D /* Domain */ = {
@@ -29,6 +29,11 @@
 		F98843AE2FD1A5D900C0429D /* Presentation */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Presentation;
+			sourceTree = "<group>";
+		};
+		F98844002FD2BD7A00C0429D /* Resources */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Resources;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -47,10 +52,11 @@
 		F988438E2FD1A56500C0429D = {
 			isa = PBXGroup;
 			children = (
+				F98844002FD2BD7A00C0429D /* Resources */,
 				F98843AE2FD1A5D900C0429D /* Presentation */,
 				F98843AA2FD1A5B000C0429D /* Data */,
 				F98843A82FD1A59400C0429D /* Domain */,
-				F98843992FD1A56500C0429D /* BlueHour */,
+				F98843992FD1A56500C0429D /* App */,
 				F98843982FD1A56500C0429D /* Products */,
 			);
 			sourceTree = "<group>";
@@ -79,10 +85,11 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				F98843992FD1A56500C0429D /* BlueHour */,
+				F98843992FD1A56500C0429D /* App */,
 				F98843A82FD1A59400C0429D /* Domain */,
 				F98843AA2FD1A5B000C0429D /* Data */,
 				F98843AE2FD1A5D900C0429D /* Presentation */,
+				F98844002FD2BD7A00C0429D /* Resources */,
 			);
 			name = BlueHour;
 			packageProductDependencies = (
