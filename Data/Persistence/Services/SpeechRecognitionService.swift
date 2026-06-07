@@ -38,23 +38,51 @@ actor SpeechRecognitionService: SpeechRecognitionServiceProtocol {
 
         let fileURL = await audioService.fileURL(for: fileName)
         let request = SFSpeechURLRecognitionRequest(url: fileURL)
-        request.requiresOnDeviceRecognition = true  // 온디바이스 우선 (프라이버시)
+        request.requiresOnDeviceRecognition = true
 
         return try await withCheckedThrowingContinuation { continuation in
-            recognizer.recognitionTask(with: request) { result, error in
-                if let error {
-                    continuation.resume(throwing: SpeechRecognitionError.transcriptionFailed)
-                    return
-                }
-                guard let result, result.isFinal else { return }
+            // continuation이 한 번만 호출되도록 보호하는 플래그
+            let hasResumed = ResumeGuard()
+            var task: SFSpeechRecognitionTask?
 
-                let transcript = DiaryTranscript(
-                    originalText: result.bestTranscription.formattedString,
-                    editedText: nil,
-                    languageCode: languageCode,
-                    confidence: Self.averageConfidence(of: result)
-                )
-                continuation.resume(returning: transcript)
+            // 안전장치: 8초 안에 final이 안 오면 지금까지의 결과로 마무리
+            let timeout = Task {
+                try? await Task.sleep(for: .seconds(8))
+                if await hasResumed.markIfNeeded() {
+                    task?.cancel()
+                    // 부분 결과조차 없으면 빈 텍스트로 (오류 아님)
+                    let empty = DiaryTranscript(
+                        originalText: "",
+                        editedText: nil,
+                        languageCode: languageCode,
+                        confidence: nil
+                    )
+                    continuation.resume(returning: empty)
+                }
+            }
+
+            task = recognizer.recognitionTask(with: request) { result, error in
+                Task {
+                    if let error {
+                        if await hasResumed.markIfNeeded() {
+                            timeout.cancel()
+                            continuation.resume(throwing: SpeechRecognitionError.transcriptionFailed)
+                        }
+                        return
+                    }
+                    guard let result, result.isFinal else { return }
+
+                    if await hasResumed.markIfNeeded() {
+                        timeout.cancel()
+                        let transcript = DiaryTranscript(
+                            originalText: result.bestTranscription.formattedString,
+                            editedText: nil,
+                            languageCode: languageCode,
+                            confidence: Self.averageConfidence(of: result)
+                        )
+                        continuation.resume(returning: transcript)
+                    }
+                }
             }
         }
     }
@@ -66,5 +94,16 @@ actor SpeechRecognitionService: SpeechRecognitionServiceProtocol {
         guard !segments.isEmpty else { return nil }
         let total = segments.reduce(0.0) { $0 + Double($1.confidence) }
         return total / Double(segments.count)
+    }
+}
+
+/// continuation이 두 번 호출되어 크래시 나는 걸 막는 안전장치.
+/// markIfNeeded()는 처음 호출될 때만 true를 돌려준다.
+private actor ResumeGuard {
+    private var resumed = false
+    func markIfNeeded() -> Bool {
+        guard !resumed else { return false }
+        resumed = true
+        return true
     }
 }

@@ -51,6 +51,28 @@ actor SkyAnalysisService: SkyAnalysisServiceProtocol {
     - 의료/심리 용어를 쓰지 마세요.
     - 사용자의 표현을 존중하며, 관찰한 결을 날씨로 옮기기만 하세요.
 
+    날씨 선택 규칙 (가장 중요):
+    먼저 감정 키워드를 정한 뒤, 그 키워드들의 전반적인 결에 맞는 날씨를 고르세요.
+    감정 키워드와 날씨가 따로 놀면 안 됩니다. 반드시 일치시키세요.
+
+    - 즐거움, 행복, 설렘, 기쁨, 만족, 사랑 등 밝고 긍정적인 하루
+      → clearNight(맑은 밤), sunset(노을), moonlight(고요한 밤하늘)
+    - 차분함, 평온, 안도, 휴식 등 잔잔하고 안정된 하루
+      → moonlight(고요한 밤하늘), clearNight(맑은 밤)
+    - 피로, 무기력, 우울감, 슬픔 등 가라앉은 하루
+      → cloudyNight(흐린 밤), lightRain(얇은 비)
+    - 답답함, 좌절, 힘듦이 강한 하루
+      → lightRain(얇은 비), shower(소나기)
+    - 혼란, 막막함, 생각이 많은 하루
+      → fog(안개)
+    - 불안, 들뜸, 마음이 어수선한 하루
+      → windy(바람 부는 밤)
+    - 힘들었지만 끝에 회복/희망의 신호가 함께 있는 하루
+      → lightThroughClouds(구름 사이 작은 빛), partlyCloudy(구름 조금)
+
+    긍정적인 키워드만 있는데 흐린 밤이나 비를 고르지 마세요.
+    부정적인 키워드만 있는데 맑은 밤을 고르지 마세요.
+
     허용되는 말투:
     - "오늘 기록에서는 피로와 부담감이 자주 보였어요."
     - "하루 끝에는 조금 회복되는 표현도 함께 있었어요."
@@ -65,9 +87,16 @@ actor SkyAnalysisService: SkyAnalysisServiceProtocol {
             throw SkyAnalysisError.emptyTranscript
         }
 
-        // 1. 모델 사용 가능 여부 확인
+        // 1. 모델 사용 가능 여부 확인 (실패 시 이유를 콘솔에 출력)
         let model = SystemLanguageModel.default
-        guard case .available = model.availability else {
+        switch model.availability {
+        case .available:
+            break
+        case .unavailable(let reason):
+            print("⚠️ Foundation Model 사용 불가. 이유:", reason)
+            throw SkyAnalysisError.modelUnavailable
+        @unknown default:
+            print("⚠️ Foundation Model 알 수 없는 상태")
             throw SkyAnalysisError.modelUnavailable
         }
 
@@ -89,8 +118,11 @@ actor SkyAnalysisService: SkyAnalysisServiceProtocol {
                 to: prompt,
                 generating: GeneratedSky.self
             ).content
-            return Self.toDomain(generated)
+            return await Self.toDomain(generated)
         } catch {
+            // 실제 오류를 콘솔에 출력 (디버깅용)
+            print("⚠️ SkyAnalysis 분석 실패:", error)
+            print("⚠️ 상세:", String(describing: error))
             throw SkyAnalysisError.analysisFailed
         }
     }
@@ -99,7 +131,7 @@ actor SkyAnalysisService: SkyAnalysisServiceProtocol {
 
     private static func toDomain(_ g: GeneratedSky) -> SkyAnalysis {
         SkyAnalysis(
-            weatherType: SkyWeatherType(rawValue: g.weatherType) ?? .cloudyNight,
+            weatherType: SkyWeatherType(rawValue: g.weatherType) ?? .partlyCloudy  ,
             title: g.title,
             summary: g.summary,
             emotionKeywords: g.emotionKeywords,

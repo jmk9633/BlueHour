@@ -10,6 +10,7 @@ import SwiftUI
 struct SkyCalendarView: View {
     @Environment(\.di) private var di
     @State private var viewModel: SkyCalendarViewModel?
+    @State private var selectedEntry: DiaryEntry?
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: BHMetrics.spacingS), count: 7)
 
@@ -28,6 +29,11 @@ struct SkyCalendarView: View {
                 let vm = SkyCalendarViewModel(repository: di.diaryRepository)
                 viewModel = vm
                 await vm.load()
+            }
+        }
+        .sheet(item: $selectedEntry) { entry in
+            NavigationStack {
+                SkyDetailView(entry: entry)
             }
         }
     }
@@ -116,6 +122,12 @@ struct SkyCalendarView: View {
                     .font(.system(size: 9))
                     .foregroundStyle(Color.bhTextSecondary.opacity(0.7))
                     .padding(3)
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if let entry = viewModel.entry(for: normalized) {
+                    selectedEntry = entry
+                }
             }
     }
 }

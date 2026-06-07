@@ -30,6 +30,17 @@ struct ReviewView: View {
                         .fill(Color.bhMistBlue.opacity(0.3))
                 )
                 .frame(maxHeight: 240)
+                .overlay(alignment: .topLeading) {
+                    // 비어 있을 때만 보이는 안내 글자
+                    if viewModel.editableText.isEmpty {
+                        Text("오늘 하루를 가볍게 적어보세요.")
+                            .font(.bhBody)
+                            .foregroundStyle(Color.bhTextSecondary.opacity(0.6))
+                            .padding(BHMetrics.spacingM)
+                            .padding(.top, 8)
+                            .allowsHitTesting(false)  // 글자가 입력을 가로막지 않게
+                    }
+                }
 
             Spacer()
 

@@ -114,10 +114,15 @@ final class RecordFlowViewModel {
                 fileName: fileName,
                 languageCode: "ko-KR"
             )
-            editableText = transcript.displayText
+            let text = transcript.displayText.trimmingCharacters(in: .whitespacesAndNewlines)
+            // 비어 있어도 오류가 아님 — 사용자가 직접 적도록 수정 화면으로
+            editableText = text
             state = .reviewing
         } catch {
-            state = .failed("말한 내용을 글로 옮기지 못했어요.")
+            // 인식 실패도 막다른 길이 아님 — 빈 칸으로 직접 쓰게 함
+            print("ℹ️ 음성 인식 실패, 직접 입력으로 전환:", error)
+            editableText = ""
+            state = .reviewing
         }
     }
 

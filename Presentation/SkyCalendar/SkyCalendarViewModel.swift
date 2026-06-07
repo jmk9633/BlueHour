@@ -20,6 +20,9 @@ final class SkyCalendarViewModel {
     /// 날짜 → 그날의 하늘 (분석이 있는 날만)
     private(set) var skyByDay: [Date: SkyAnalysis] = [:]
 
+    /// 날짜 → 그날의 일기 전체 (분석이 있는 날만)
+    private(set) var entriesByDay: [Date: DiaryEntry] = [:]
+
     /// 날씨 종류별 일수. 예: [.clearNight: 6, .cloudyNight: 9]
     private(set) var weatherCounts: [(type: SkyWeatherType, count: Int)] = []
 
@@ -56,6 +59,7 @@ final class SkyCalendarViewModel {
             buildState(from: entries)
         } catch {
             skyByDay = [:]
+            entriesByDay = [:]
             weatherCounts = []
         }
     }
@@ -76,20 +80,30 @@ final class SkyCalendarViewModel {
         }
     }
 
+    // MARK: - 날짜로 일기 찾기
+
+    /// 달력에서 특정 날짜를 탭했을 때 그날의 일기를 반환 (없으면 nil)
+    func entry(for day: Date) -> DiaryEntry? {
+        entriesByDay[Calendar.current.startOfDay(for: day)]
+    }
+
     // MARK: - Private
 
     private func buildState(from entries: [DiaryEntry]) {
         var byDay: [Date: SkyAnalysis] = [:]
+        var entryByDay: [Date: DiaryEntry] = [:]
         var counts: [SkyWeatherType: Int] = [:]
 
         for entry in entries {
             guard let analysis = entry.analysis else { continue }
             let day = Calendar.current.startOfDay(for: entry.date)
             byDay[day] = analysis
+            entryByDay[day] = entry
             counts[analysis.weatherType, default: 0] += 1
         }
 
         skyByDay = byDay
+        entriesByDay = entryByDay
         // 많이 나온 날씨 순으로 정렬
         weatherCounts = counts
             .map { (type: $0.key, count: $0.value) }
