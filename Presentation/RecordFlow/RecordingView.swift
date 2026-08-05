@@ -10,6 +10,8 @@ import SwiftUI
 struct RecordingView: View {
     let viewModel: RecordFlowViewModel
 
+    @State private var showCancelConfirmation = false
+
     private var timeText: String {
         let elapsed = Int(viewModel.elapsedTime)
         let total = Int(viewModel.maxDuration)
@@ -28,8 +30,13 @@ struct RecordingView: View {
                 .contentTransition(.numericText())
 
             VStack(spacing: BHMetrics.spacingS) {
-                Text("잘 정리해서 말하지 않아도 괜찮아요.")
-                Text("멈칫한 순간도 오늘의 일부예요.")
+                if viewModel.isPaused {
+                    Text("잠시 멈췄어요.")
+                    Text("준비되면 이어서 말해요.")
+                } else {
+                    Text("잘 정리해서 말하지 않아도 괜찮아요.")
+                    Text("멈칫한 순간도 오늘의 일부예요.")
+                }
             }
             .multilineTextAlignment(.center)
             .font(.bhCaption)
@@ -38,18 +45,38 @@ struct RecordingView: View {
             Spacer()
 
             VStack(spacing: BHMetrics.spacingM) {
+                Button(viewModel.isPaused ? "이어서 말하기" : "잠시 멈춤") {
+                    Task {
+                        if viewModel.isPaused {
+                            await viewModel.resumeRecording()
+                        } else {
+                            await viewModel.pauseRecording()
+                        }
+                    }
+                }
+                .font(.bhBody.weight(.medium))
+                .foregroundStyle(Color.bhAccent)
+
                 Button("저장하기") {
                     Task { await viewModel.stopRecording() }
                 }
                 .buttonStyle(.bhPrimary)
 
-                Button("다시 말하기") {
-                    Task { await viewModel.restart() }
+                Button("취소") {
+                    showCancelConfirmation = true
                 }
                 .font(.bhCaption)
                 .foregroundStyle(Color.bhTextSecondary)
             }
         }
         .padding(BHMetrics.screenPadding)
+        .alert("취소하시겠습니까?", isPresented: $showCancelConfirmation) {
+            Button("계속 녹음", role: .cancel) {}
+            Button("취소하기", role: .destructive) {
+                Task { await viewModel.restart() }
+            }
+        } message: {
+            Text("지금까지 녹음한 내용이 사라져요.")
+        }
     }
 }

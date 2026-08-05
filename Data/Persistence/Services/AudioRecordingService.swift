@@ -75,6 +75,21 @@ actor AudioRecordingService: AudioRecordingServiceProtocol {
         }
     }
 
+    // MARK: - 녹음 일시중지 / 이어서 시작
+
+    func pauseRecording() async {
+        recorder?.pause()
+    }
+
+    func resumeRecording() async throws {
+        guard let recorder else {
+            throw AudioRecordingError.noActiveRecording
+        }
+        guard recorder.record() else {
+            throw AudioRecordingError.recordingFailed
+        }
+    }
+
     // MARK: - 녹음 정지
 
     func stopRecording() async throws -> (fileName: String, duration: TimeInterval) {

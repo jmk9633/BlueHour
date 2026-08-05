@@ -19,6 +19,9 @@ final class RecordFlowViewModel {
     /// 녹음 경과 시간 (초). 녹음 화면의 타이머가 이 값을 표시.
     private(set) var elapsedTime: TimeInterval = 0
 
+    /// 녹음이 일시중지 상태인지 여부.
+    private(set) var isPaused: Bool = false
+
     /// 변환된 텍스트. reviewing 단계에서 사용자가 수정할 수 있음.
     var editableText: String = ""
 
@@ -71,10 +74,29 @@ final class RecordFlowViewModel {
             let fileName = try await audioService.startRecording()
             recordedFileName = fileName
             elapsedTime = 0
+            isPaused = false
             state = .recording
             startTimer()
         } catch {
             state = .failed("녹음을 시작할 수 없어요.")
+        }
+    }
+
+    // MARK: - 녹음 일시중지 / 이어서 시작
+
+    func pauseRecording() async {
+        guard state == .recording, !isPaused else { return }
+        await audioService.pauseRecording()
+        isPaused = true
+    }
+
+    func resumeRecording() async {
+        guard state == .recording, isPaused else { return }
+        do {
+            try await audioService.resumeRecording()
+            isPaused = false
+        } catch {
+            state = .failed("녹음을 이어서 진행할 수 없어요.")
         }
     }
 
@@ -100,6 +122,7 @@ final class RecordFlowViewModel {
         recordedFileName = nil
         recordedDuration = 0
         elapsedTime = 0
+        isPaused = false
         editableText = ""
         analysis = nil
         state = .idle
@@ -149,6 +172,22 @@ final class RecordFlowViewModel {
     // MARK: - 저장 (도메인 모델 조립 후 리포지토리에 위임)
 
     private func save(text: String, sky: SkyAnalysis) async throws {
+        // 하루 1개 규칙: 오늘 등록된 기록을 모두 지우고 새로 저장(덮어쓰기).
+        // 전부 지우므로 과거에 쌓인 중복도 다음 저장 때 자연히 정리된다.
+        let calendar = Calendar.current
+        let dayStart = calendar.startOfDay(for: .now)
+        let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
+        let todays = try await repository.fetchEntries(
+            in: DateInterval(start: dayStart, end: dayEnd)
+        )
+        for existing in todays {
+            // 기존 음성 파일이 있으면 디스크에서도 정리
+            if let oldFileName = existing.recording?.fileName {
+                try? await audioService.deleteRecording(fileName: oldFileName)
+            }
+            try await repository.delete(id: existing.id)
+        }
+
         let recording: VoiceRecording? = recordedFileName.map { name in
             VoiceRecording(fileName: name, duration: recordedDuration)
         }
@@ -170,6 +209,8 @@ final class RecordFlowViewModel {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(0.1))
                 guard state == .recording else { break }
+                // 일시중지 중에는 시간이 흐르지 않음
+                guard !isPaused else { continue }
                 elapsedTime += 0.1
                 if elapsedTime >= maxDuration {
                     await stopRecording()

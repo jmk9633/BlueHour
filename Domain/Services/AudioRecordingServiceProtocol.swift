@@ -21,6 +21,12 @@ protocol AudioRecordingServiceProtocol: Sendable {
     /// 녹음 시작. 저장될 파일명 반환
     func startRecording() async throws -> String
 
+    /// 녹음 일시중지
+    func pauseRecording() async
+
+    /// 일시중지한 녹음 이어서 시작
+    func resumeRecording() async throws
+
     /// 녹음 정지. (파일명, 길이) 반환
     func stopRecording() async throws -> (fileName: String, duration: TimeInterval)
 
