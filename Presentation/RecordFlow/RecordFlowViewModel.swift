@@ -76,7 +76,7 @@ final class RecordFlowViewModel {
     // MARK: - 초기화
 
     init(
-        targetDate: Date = BlueHourCalendar.startOfLogicalToday(),
+        targetDate: Date,
         replaceExisting: Bool = false,
         audioService: AudioRecordingService,
         speechService: SpeechRecognitionService,

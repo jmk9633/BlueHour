@@ -33,9 +33,11 @@ enum BlueHourCalendar {
         startOfLogicalDay(for: now, calendar: calendar)
     }
 
-    /// 주어진 날짜가 논리적 오늘과 같은 하루에 속하는지.
+    /// 주어진 날짜가 논리적 오늘에 해당하는지.
+    /// 입력은 이미 "논리적 하루의 자정"으로 정규화된(또는 달력상 하루를 대표하는) 날짜로 보고,
+    /// 4시간 재시프트 없이 그날의 자정을 논리적 오늘의 자정과 비교한다.
     static func isLogicalToday(_ date: Date, now: Date = .now, calendar: Calendar = .current) -> Bool {
-        startOfLogicalDay(for: date, calendar: calendar) == startOfLogicalToday(now: now, calendar: calendar)
+        calendar.startOfDay(for: date) == startOfLogicalToday(now: now, calendar: calendar)
     }
 
     /// 주어진 날짜(달력상의 하루)가 아직 오지 않은 미래인지.
