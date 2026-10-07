@@ -6,11 +6,32 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		80972A203076A61D004A366B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F988438F2FD1A56500C0429D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F98843962FD1A56500C0429D;
+			remoteInfo = BlueHour;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		80972A1C3076A61D004A366B /* BlueHourTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BlueHourTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F98843972FD1A56500C0429D /* BlueHour.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BlueHour.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		80972A083076A1E7004A366B /* BlueHourTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = BlueHourTests;
+			sourceTree = "<group>";
+		};
+		80972A1D3076A61D004A366B /* BlueHourTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = BlueHourTests;
+			sourceTree = "<group>";
+		};
 		F98843992FD1A56500C0429D /* App */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = App;
@@ -39,6 +60,13 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		80972A193076A61D004A366B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F98843942FD1A56500C0429D /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -57,6 +85,8 @@
 				F98843AA2FD1A5B000C0429D /* Data */,
 				F98843A82FD1A59400C0429D /* Domain */,
 				F98843992FD1A56500C0429D /* App */,
+				80972A083076A1E7004A366B /* BlueHourTests */,
+				80972A1D3076A61D004A366B /* BlueHourTests */,
 				F98843982FD1A56500C0429D /* Products */,
 			);
 			sourceTree = "<group>";
@@ -65,6 +95,7 @@
 			isa = PBXGroup;
 			children = (
 				F98843972FD1A56500C0429D /* BlueHour.app */,
+				80972A1C3076A61D004A366B /* BlueHourTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -72,6 +103,29 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		80972A1B3076A61D004A366B /* BlueHourTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 80972A223076A61D004A366B /* Build configuration list for PBXNativeTarget "BlueHourTests" */;
+			buildPhases = (
+				80972A183076A61D004A366B /* Sources */,
+				80972A193076A61D004A366B /* Frameworks */,
+				80972A1A3076A61D004A366B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				80972A213076A61D004A366B /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				80972A1D3076A61D004A366B /* BlueHourTests */,
+			);
+			name = BlueHourTests;
+			packageProductDependencies = (
+			);
+			productName = BlueHourTests;
+			productReference = 80972A1C3076A61D004A366B /* BlueHourTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		F98843962FD1A56500C0429D /* BlueHour */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = F98843A42FD1A56800C0429D /* Build configuration list for PBXNativeTarget "BlueHour" */;
@@ -105,9 +159,13 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 2630;
+				LastSwiftUpdateCheck = 2660;
 				LastUpgradeCheck = 2630;
 				TargetAttributes = {
+					80972A1B3076A61D004A366B = {
+						CreatedOnToolsVersion = 26.6;
+						TestTargetID = F98843962FD1A56500C0429D;
+					};
 					F98843962FD1A56500C0429D = {
 						CreatedOnToolsVersion = 26.3;
 					};
@@ -128,11 +186,19 @@
 			projectRoot = "";
 			targets = (
 				F98843962FD1A56500C0429D /* BlueHour */,
+				80972A1B3076A61D004A366B /* BlueHourTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		80972A1A3076A61D004A366B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F98843952FD1A56500C0429D /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -143,6 +209,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		80972A183076A61D004A366B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F98843932FD1A56500C0429D /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -152,7 +225,57 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		80972A213076A61D004A366B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F98843962FD1A56500C0429D /* BlueHour */;
+			targetProxy = 80972A203076A61D004A366B /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		80972A233076A61D004A366B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = MK.BlueHourTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BlueHour.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/BlueHour";
+			};
+			name = Debug;
+		};
+		80972A243076A61D004A366B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = MK.BlueHourTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BlueHour.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/BlueHour";
+			};
+			name = Release;
+		};
 		F98843A22FD1A56800C0429D /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -343,6 +466,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		80972A223076A61D004A366B /* Build configuration list for PBXNativeTarget "BlueHourTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				80972A233076A61D004A366B /* Debug */,
+				80972A243076A61D004A366B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		F98843922FD1A56500C0429D /* Build configuration list for PBXProject "BlueHour" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

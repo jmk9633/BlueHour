@@ -23,7 +23,10 @@ struct SettingsView: View {
         }
         .onAppear {
             if viewModel == nil {
-                viewModel = SettingsViewModel(repository: di.diaryRepository)
+                viewModel = SettingsViewModel(
+                    repository: di.diaryRepository,
+                    audioService: di.audioService
+                )
             }
         }
     }

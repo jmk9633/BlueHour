@@ -60,10 +60,22 @@ struct RecordFlowView: View {
             }
         }
         // 포그라운드 복귀 시 기록 상태를 다시 확인 (앱을 켜둔 채 새벽 4시를 넘기는 경우 대비)
+        // 백그라운드로 들어갈 때 녹음 중이면 자동 정지하고 보존한다.
         .onChange(of: scenePhase) { _, newPhase in
-            if newPhase == .active {
+            switch newPhase {
+            case .active:
                 Task { await viewModel?.loadExistingEntry() }
+            case .background:
+                if viewModel?.state == .recording {
+                    Task { await viewModel?.handleInterruption() }
+                }
+            default:
+                break
             }
+        }
+        // 화면을 벗어나면 인터럽션 옵저버를 해제한다.
+        .onDisappear {
+            viewModel?.viewDidDisappear()
         }
         // 오늘의 하늘 → 하늘 상세 시트 (기록 변경은 이 상세 시트의 ··· 메뉴로만)
         .sheet(item: $detailEntry) { entry in
@@ -92,6 +104,10 @@ struct RecordFlowView: View {
             }
         case .recording:
             RecordingView(viewModel: viewModel)
+        case .interrupted:
+            InterruptedView(viewModel: viewModel)
+        case .permissionDenied:
+            PermissionDeniedView(viewModel: viewModel)
         case .transcribing, .analyzing:
             AnalysisView(state: viewModel.state)
         case .reviewing:

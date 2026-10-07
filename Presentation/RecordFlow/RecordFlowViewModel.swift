@@ -7,6 +7,8 @@
 
 import Foundation
 import Observation
+import AVFoundation
+import UIKit
 
 @MainActor
 @Observable
@@ -35,6 +37,17 @@ final class RecordFlowViewModel {
     // MARK: - 설정값
 
     let maxDuration: TimeInterval = 60   // 최대 60초
+    let minimumDuration: TimeInterval = 3   // 3초 미만은 저장하지 않음
+
+    /// 지금 녹음이 저장 가능한 최소 길이를 넘겼는지 (녹음 중 판단용).
+    var isRecordingLongEnough: Bool {
+        elapsedTime >= minimumDuration
+    }
+
+    /// 보존된(인터럽션으로 멈춘) 녹음이 저장 가능한 최소 길이를 넘겼는지.
+    var canSavePreservedRecording: Bool {
+        recordedDuration >= minimumDuration
+    }
 
     /// 이 기록이 저장될 대상 날짜. 오늘 탭은 논리적 오늘의 자정, 캘린더에서 과거 날짜를 고르면 그 날(자정).
     let targetDate: Date
@@ -54,16 +67,20 @@ final class RecordFlowViewModel {
 
     // MARK: - 의존성 (일꾼들)
 
-    private let audioService: AudioRecordingService
-    private let speechService: SpeechRecognitionService
-    private let analysisService: SkyAnalysisService
+    private let audioService: AudioRecordingServiceProtocol
+    private let speechService: SpeechRecognitionServiceProtocol
+    private let analysisService: SkyAnalysisServiceProtocol
     private let repository: DiaryRepositoryProtocol
+    private let defaults: UserDefaults
 
     // MARK: - 내부 상태
 
     private var recordedFileName: String?
     private var recordedDuration: TimeInterval = 0
     private var timerTask: Task<Void, Never>?
+    // 옵저버 토큰. 등록·해제는 항상 MainActor에서 일어나고, deinit의 removeObserver는 스레드 안전하다.
+    // (UI 상태가 아니므로 Observation 추적에서 제외한다.)
+    @ObservationIgnored nonisolated(unsafe) private var interruptionObserver: NSObjectProtocol?
 
     /// 기존 기록을 텍스트로 수정하는 중이면 그 엔트리. 저장 시 새로 만들지 않고 이 엔트리를 덮어쓴다.
     private var editingEntry: DiaryEntry?
@@ -78,10 +95,11 @@ final class RecordFlowViewModel {
     init(
         targetDate: Date,
         replaceExisting: Bool = false,
-        audioService: AudioRecordingService,
-        speechService: SpeechRecognitionService,
-        analysisService: SkyAnalysisService,
-        repository: DiaryRepositoryProtocol
+        audioService: AudioRecordingServiceProtocol,
+        speechService: SpeechRecognitionServiceProtocol,
+        analysisService: SkyAnalysisServiceProtocol,
+        repository: DiaryRepositoryProtocol,
+        defaults: UserDefaults = .standard
     ) {
         self.targetDate = targetDate
         self.replaceExisting = replaceExisting
@@ -89,6 +107,7 @@ final class RecordFlowViewModel {
         self.speechService = speechService
         self.analysisService = analysisService
         self.repository = repository
+        self.defaults = defaults
     }
 
     // MARK: - 대상 날짜의 기존 기록 확인 (진입/복귀/저장 후 호출)
@@ -106,10 +125,10 @@ final class RecordFlowViewModel {
         // 하루 1개 정책: 이미 기록이 있으면 새 녹음을 시작하지 않는다(진입 단계 차단).
         guard existingEntry == nil else { return }
 
-        // 권한 확인
+        // 권한 확인 — 거부되면 권한 안내 화면으로
         let micGranted = await audioService.requestPermission()
         guard micGranted else {
-            state = .failed("마이크 권한이 필요해요. 설정에서 허용해 주세요.")
+            state = .permissionDenied
             return
         }
         _ = await speechService.requestPermission()
@@ -117,10 +136,13 @@ final class RecordFlowViewModel {
         do {
             let fileName = try await audioService.startRecording()
             recordedFileName = fileName
+            recordedDuration = 0
             elapsedTime = 0
             isPaused = false
             state = .recording
+            setIdleTimer(disabled: true)   // 녹음 중 화면 자동 잠금 방지
             startTimer()
+            startInterruptionObserver()
         } catch {
             state = .failed("녹음을 시작할 수 없어요.")
         }
@@ -144,10 +166,23 @@ final class RecordFlowViewModel {
         }
     }
 
+    // MARK: - 저장 요청 (3초 규칙 게이트)
+
+    /// 사용자가 [저장하기]를 눌렀을 때 호출. 3초 미만이면 저장하지 않고 false를 돌려준다.
+    /// (화면은 false일 때 '조금만 더 말해볼까요?' 안내를 띄우고 녹음을 계속 유지한다.)
+    @discardableResult
+    func requestSave() async -> Bool {
+        guard isRecordingLongEnough else { return false }
+        await stopRecording()
+        return true
+    }
+
     // MARK: - 2. 녹음 정지 → 변환
 
     func stopRecording() async {
         stopTimer()
+        stopInterruptionObserver()
+        setIdleTimer(disabled: false)
         do {
             let (fileName, duration) = try await audioService.stopRecording()
             recordedFileName = fileName
@@ -158,11 +193,51 @@ final class RecordFlowViewModel {
         }
     }
 
+    // MARK: - 인터럽션/백그라운드로 녹음이 멈춤 → 보존
+
+    /// 전화 등 오디오 인터럽션이나 백그라운드 진입 시 녹음을 정지하고 지금까지의 녹음을 보존한다.
+    /// 사용자는 복귀 후 [저장하기] 또는 [다시 말하기]를 고른다.
+    func handleInterruption() async {
+        guard state == .recording else { return }
+        stopTimer()
+        stopInterruptionObserver()
+        setIdleTimer(disabled: false)
+        isPaused = false
+        do {
+            let (fileName, duration) = try await audioService.stopRecording()
+            recordedFileName = fileName
+            recordedDuration = duration
+        } catch {
+            // 정지에 실패해도 지금까지의 파일명은 유지한 채 보존 화면으로 넘어간다.
+        }
+        state = .interrupted
+    }
+
+    /// 인터럽션 보존본으로 그대로 변환을 진행한다.
+    func continueAfterInterruption() async {
+        guard let fileName = recordedFileName else {
+            await restart()
+            return
+        }
+        await transcribe(fileName: fileName)
+    }
+
+    /// 인터럽션 보존본을 버리고 처음으로 돌아간다.
+    func discardAfterInterruption() async {
+        await restart()
+    }
+
     // MARK: - 다시 말하기 (녹음 취소 후 처음으로)
 
     func restart() async {
         stopTimer()
+        stopInterruptionObserver()
+        setIdleTimer(disabled: false)
         await audioService.cancelRecording()
+        // 저장되지 않은 고아 임시 파일 정리. 단, 편집 모드에서는 기존 기록의 음성을 지우면 안 되므로 건드리지 않는다.
+        if editingEntry == nil, let name = recordedFileName {
+            try? await audioService.deleteRecording(fileName: name)
+        }
         recordedFileName = nil
         recordedDuration = 0
         elapsedTime = 0
@@ -172,6 +247,16 @@ final class RecordFlowViewModel {
         state = .idle
         // 저장 후 결과 화면을 닫고 돌아왔을 수 있으므로, 최신 기록 상태를 다시 반영한다.
         await loadExistingEntry()
+    }
+
+    // MARK: - 텍스트로 쓰기 (녹음 없이 바로 리뷰 화면)
+
+    /// 마이크 권한 거부 등으로 음성을 쓸 수 없을 때, 녹음 없이 직접 입력으로 전환한다.
+    func writeWithoutRecording() {
+        recordedFileName = nil
+        recordedDuration = 0
+        editableText = ""
+        state = .reviewing
     }
 
     // MARK: - 기존 기록 텍스트 수정으로 진입 (녹음 없이 바로 리뷰 화면)
@@ -246,6 +331,7 @@ final class RecordFlowViewModel {
                 updatedAt: .now
             )
             try await repository.update(updated)
+            recordedFileName = nil
             return
         }
 
@@ -255,9 +341,20 @@ final class RecordFlowViewModel {
             try await replaceExistingEntries(on: targetDate)
         }
 
-        let recording: VoiceRecording? = recordedFileName.map { name in
-            VoiceRecording(fileName: name, duration: recordedDuration)
+        // 음성 저장 방식(saveOriginalAudio)은 '저장하는 지금 시점의 설정값'을 기준으로 적용한다.
+        // (설정을 바꿔도 이미 저장된 기록에는 소급 적용하지 않는다.)
+        let keepAudio = defaults.bool(forKey: AppSettings.Keys.saveOriginalAudio)
+        var recording: VoiceRecording?
+        if let name = recordedFileName {
+            if keepAudio {
+                recording = VoiceRecording(fileName: name, duration: recordedDuration)
+            } else {
+                // '글과 하늘만 남기기'이면 변환이 끝난 음성 파일을 삭제한다.
+                try? await audioService.deleteRecording(fileName: name)
+                recording = nil
+            }
         }
+
         let transcript = DiaryTranscript(originalText: text, editedText: nil)
 
         // date는 대상 날짜(논리적 하루의 자정)로 정규화해 저장하고, createdAt은 실제 시각(기본값)을 둔다.
@@ -268,6 +365,8 @@ final class RecordFlowViewModel {
             analysis: sky
         )
         try await repository.save(entry)
+        // 저장이 끝난 파일은 이 흐름에서 더 이상 '임시 파일'이 아니므로 참조를 비운다.
+        recordedFileName = nil
     }
 
     /// 대상 날짜에 등록된 기록을 모두 지운다(음성 파일 포함).
@@ -286,6 +385,56 @@ final class RecordFlowViewModel {
             }
             try await repository.delete(id: entry.id)
         }
+    }
+
+    // MARK: - 화면 자동 잠금 제어
+
+    private func setIdleTimer(disabled: Bool) {
+        UIApplication.shared.isIdleTimerDisabled = disabled
+    }
+
+    // MARK: - 인터럽션 관찰 (전화 등 오디오 세션 인터럽션)
+
+    /// 인터럽션 옵저버를 등록한다. 등록은 이 메서드가 반환하는 즉시 활성화되므로,
+    /// 등록 직후 들어오는 인터럽션도 놓치지 않는다.
+    private func startInterruptionObserver() {
+        // 중복 등록 방지: 이미 등록돼 있으면 먼저 해제한다.
+        // (녹음 재시작 등으로 startRecording이 다시 호출돼도 옵저버는 항상 1개만 유지)
+        stopInterruptionObserver()
+        interruptionObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            // 인터럽션 '시작' 유형만 처리한다.
+            guard
+                let raw = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+                let type = AVAudioSession.InterruptionType(rawValue: raw),
+                type == .began
+            else { return }
+            Task { @MainActor in
+                await self?.handleInterruption()
+            }
+        }
+    }
+
+    private func stopInterruptionObserver() {
+        if let observer = interruptionObserver {
+            NotificationCenter.default.removeObserver(observer)
+            interruptionObserver = nil
+        }
+    }
+
+    deinit {
+        // ViewModel이 해제될 때 옵저버가 반드시 풀리도록 하는 최종 안전장치.
+        if let observer = interruptionObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
+
+    /// 화면을 벗어날 때(onDisappear) 호출. 인터럽션 옵저버를 해제한다.
+    func viewDidDisappear() {
+        stopInterruptionObserver()
     }
 
     // MARK: - 타이머 (60초 도달 시 자동 정지)

@@ -11,6 +11,9 @@ struct RecordingView: View {
     let viewModel: RecordFlowViewModel
 
     @State private var showCancelConfirmation = false
+    @State private var showTooShortNotice = false
+    /// 취소 확인 알림을 띄우며 자동으로 일시중지했는지 (계속 말하기 시 되돌리기 위함)
+    @State private var didAutoPause = false
 
     private var timeText: String {
         let elapsed = Int(viewModel.elapsedTime)
@@ -58,11 +61,20 @@ struct RecordingView: View {
                 .foregroundStyle(Color.bhAccent)
 
                 Button("저장하기") {
-                    Task { await viewModel.stopRecording() }
+                    // 3초 미만이면 저장하지 않고 조금 더 말하도록 안내 (녹음은 계속 유지)
+                    Task {
+                        let saved = await viewModel.requestSave()
+                        if !saved { showTooShortNotice = true }
+                    }
                 }
                 .buttonStyle(.bhPrimary)
 
                 Button("취소") {
+                    // 확인하는 동안에는 녹음을 멈춰 둔다
+                    if !viewModel.isPaused {
+                        didAutoPause = true
+                        Task { await viewModel.pauseRecording() }
+                    }
                     showCancelConfirmation = true
                 }
                 .font(.bhCaption)
@@ -70,13 +82,25 @@ struct RecordingView: View {
             }
         }
         .padding(BHMetrics.screenPadding)
-        .alert("취소하시겠습니까?", isPresented: $showCancelConfirmation) {
-            Button("계속 녹음", role: .cancel) {}
-            Button("취소하기", role: .destructive) {
+        .alert("녹음을 그만둘까요?", isPresented: $showCancelConfirmation) {
+            Button("계속 말하기", role: .cancel) {
+                // 자동으로 멈춰 두었다면 이어서 녹음
+                if didAutoPause {
+                    didAutoPause = false
+                    Task { await viewModel.resumeRecording() }
+                }
+            }
+            Button("그만두기", role: .destructive) {
+                didAutoPause = false
                 Task { await viewModel.restart() }
             }
         } message: {
-            Text("지금까지 녹음한 내용이 사라져요.")
+            Text("지금까지 말한 내용은 저장되지 않아요.")
+        }
+        .alert("조금만 더 말해볼까요?", isPresented: $showTooShortNotice) {
+            Button("이어서 말하기", role: .cancel) {}
+        } message: {
+            Text("3초 이상 말해야 하늘로 담을 수 있어요.")
         }
     }
 }

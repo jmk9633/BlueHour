@@ -128,6 +128,17 @@ actor AudioRecordingService: AudioRecordingServiceProtocol {
         try deleteFile(fileName: fileName)
     }
 
+    func deleteAllRecordings() async throws {
+        let fileManager = FileManager.default
+        let files = try fileManager.contentsOfDirectory(
+            at: recordingsDirectory,
+            includingPropertiesForKeys: nil
+        )
+        for file in files {
+            try? fileManager.removeItem(at: file)
+        }
+    }
+
     // MARK: - Private
 
     private func deleteFile(fileName: String) throws {

@@ -18,6 +18,9 @@ struct BlueHourApp: App {
     @State private var container: DIContainer
 
     init() {
+        // 설정 기본값 등록 (saveOriginalAudio = true 등)
+        AppSettings.registerDefaults()
+
         // SwiftData 컨테이너 생성
         let modelContainer = BlueHourModelContainer.make()
         self.modelContainer = modelContainer

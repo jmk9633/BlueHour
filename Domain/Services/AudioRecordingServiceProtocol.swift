@@ -35,4 +35,7 @@ protocol AudioRecordingServiceProtocol: Sendable {
 
     /// 음성 파일 삭제
     func deleteRecording(fileName: String) async throws
+
+    /// 저장된 모든 음성 파일 삭제 (전체 기록 삭제 시 사용)
+    func deleteAllRecordings() async throws
 }

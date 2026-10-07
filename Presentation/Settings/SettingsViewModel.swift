@@ -15,11 +15,11 @@ final class SettingsViewModel {
     // MARK: - 설정값 (UserDefaults에 저장)
 
     var useFaceIDLock: Bool {
-        didSet { defaults.set(useFaceIDLock, forKey: Keys.faceID) }
+        didSet { defaults.set(useFaceIDLock, forKey: AppSettings.Keys.useFaceIDLock) }
     }
 
     var saveOriginalAudio: Bool {
-        didSet { defaults.set(saveOriginalAudio, forKey: Keys.saveAudio) }
+        didSet { defaults.set(saveOriginalAudio, forKey: AppSettings.Keys.saveOriginalAudio) }
     }
 
     private(set) var showDeleteConfirmation = false
@@ -27,19 +27,20 @@ final class SettingsViewModel {
     // MARK: - 의존성
 
     private let repository: DiaryRepositoryProtocol
+    private let audioService: AudioRecordingService
     private let defaults: UserDefaults
 
-    private enum Keys {
-        static let faceID = "settings.useFaceIDLock"
-        static let saveAudio = "settings.saveOriginalAudio"
-    }
-
-    init(repository: DiaryRepositoryProtocol, defaults: UserDefaults = .standard) {
+    init(
+        repository: DiaryRepositoryProtocol,
+        audioService: AudioRecordingService,
+        defaults: UserDefaults = .standard
+    ) {
         self.repository = repository
+        self.audioService = audioService
         self.defaults = defaults
-        self.useFaceIDLock = defaults.bool(forKey: Keys.faceID)
-        // 기본값: 원본 음성 저장 안 함 (문서 정책)
-        self.saveOriginalAudio = defaults.bool(forKey: Keys.saveAudio)
+        // 기본값은 AppSettings.registerDefaults로 등록된다 (saveOriginalAudio = true).
+        self.useFaceIDLock = defaults.bool(forKey: AppSettings.Keys.useFaceIDLock)
+        self.saveOriginalAudio = defaults.bool(forKey: AppSettings.Keys.saveOriginalAudio)
     }
 
     // MARK: - 기록 전체 삭제
@@ -55,5 +56,7 @@ final class SettingsViewModel {
     func confirmDeleteAll() async {
         showDeleteConfirmation = false
         try? await repository.deleteAll()
+        // SwiftData 기록과 함께 Documents/Recordings의 음성 파일도 모두 삭제한다.
+        try? await audioService.deleteAllRecordings()
     }
 }
