@@ -78,15 +78,24 @@ actor FakeSpeechRecognitionService: SpeechRecognitionServiceProtocol {
 actor FakeSkyAnalysisService: SkyAnalysisServiceProtocol {
     var result: SkyAnalysis
     var available: Bool
+    var errorToThrow: Error?
 
-    init(result: SkyAnalysis = FakeSkyAnalysisService.defaultSky, available: Bool = true) {
+    init(
+        result: SkyAnalysis = FakeSkyAnalysisService.defaultSky,
+        available: Bool = true,
+        errorToThrow: Error? = nil
+    ) {
         self.result = result
         self.available = available
+        self.errorToThrow = errorToThrow
     }
 
     func isAvailable() async -> Bool { available }
 
-    func analyze(text: String) async throws -> SkyAnalysis { result }
+    func analyze(text: String) async throws -> SkyAnalysis {
+        if let errorToThrow { throw errorToThrow }
+        return result
+    }
 
     static let defaultSky = SkyAnalysis(
         weatherType: .moonlight,

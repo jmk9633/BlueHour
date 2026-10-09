@@ -113,9 +113,11 @@ final class RecordFlowViewModel {
     // MARK: - 대상 날짜의 기존 기록 확인 (진입/복귀/저장 후 호출)
 
     /// 대상 날짜에 저장된 기록을 다시 불러와 existingEntry에 반영한다.
-    /// 텍스트 수정 모드(editingEntry)일 때는 리뷰 화면을 유지해야 하므로 건너뛴다.
+    /// - 텍스트 수정 모드(editingEntry)일 때는 리뷰 화면을 유지해야 하므로 건너뛴다.
+    /// - 다시 말하기(replaceExisting) 모드에서는 기존 기록이 있어도 녹음을 새로 시작해야 하므로
+    ///   existingEntry를 비워 둔 채(오늘 화면의 녹음 버튼을 노출) 건너뛴다.
     func loadExistingEntry() async {
-        guard editingEntry == nil else { return }
+        guard editingEntry == nil, !replaceExisting else { return }
         existingEntry = try? await repository.fetchEntry(on: targetDate)
     }
 
@@ -307,14 +309,24 @@ final class RecordFlowViewModel {
             self.analysis = sky
             try await save(text: text, sky: sky)
             state = .result
-        } catch SkyAnalysisError.modelUnavailable {
-            // AI를 쓸 수 없으면 하늘 없이 저장한다('아직 그려지지 않은 하늘').
-            // 나중에 AI를 쓸 수 있게 되면 PendingSkyAnalyzer가 자동으로 하늘을 채운다.
-            self.analysis = nil
-            try? await save(text: text, sky: nil)
-            state = .savedWithoutSky
         } catch {
-            state = .failed("오늘의 하늘을 만들지 못했어요. 잠시 후 다시 시도해 주세요.")
+            // 분석 실패 시 처리는 흐름에 따라 다르다.
+            if editingEntry != nil {
+                // 기록 수정 모드(F-ROLIZJ): 수정한 텍스트는 저장하되 이전 하늘(analysis)은 그대로 유지한다.
+                // 이렇게 하면 사용자는 고친 글을 잃지 않고, 나중에 다시 분석을 시도할 수 있다.
+                let previous = editingEntry?.analysis
+                self.analysis = previous
+                try? await save(text: text, sky: previous)
+                state = previous == nil ? .savedWithoutSky : .result
+            } else if case SkyAnalysisError.modelUnavailable = error {
+                // 신규 흐름에서 AI를 쓸 수 없으면 하늘 없이 저장한다('아직 그려지지 않은 하늘').
+                // 나중에 AI를 쓸 수 있게 되면 PendingSkyAnalyzer가 자동으로 하늘을 채운다.
+                self.analysis = nil
+                try? await save(text: text, sky: nil)
+                state = .savedWithoutSky
+            } else {
+                state = .failed("오늘의 하늘을 만들지 못했어요. 잠시 후 다시 시도해 주세요.")
+            }
         }
     }
 
@@ -341,8 +353,13 @@ final class RecordFlowViewModel {
             return
         }
 
-        // 교체 모드('다시 말하기' 등)에서만 대상 날짜의 기존 기록을 정리한다.
+        // 교체 모드('다시 말하기')에서만 대상 날짜의 기존 기록을 정리한다.
+        // 이 삭제는 '새 기록을 실제로 저장하는 지금 시점'에만 일어난다.
+        // (녹음 시작·녹음 중 취소·텍스트 확인 단계 이탈·앱 종료 시에는 기존 기록이 그대로 남는다.)
         // 신규 흐름은 진입 단계에서 하루 1개를 보장하므로 여기서 지우지 않는다.
+        //
+        // TODO(6단계·무료 하늘 카운트): 다시 말하기는 '기존 기록을 바꾸는 것'이므로
+        // 무료 하늘 카운트를 늘리면 안 된다. 즉 replaceExisting == true인 저장은 카운트 증가 대상에서 제외한다.
         if replaceExisting {
             try await replaceExistingEntries(on: targetDate)
         }

@@ -15,6 +15,8 @@ struct RecordFlowView: View {
     var targetDate: Date = BlueHourCalendar.startOfLogicalToday()
     /// 기존 기록을 텍스트로 수정할 때 넘기는 엔트리. 있으면 녹음 없이 리뷰 화면으로 바로 진입.
     var editingEntry: DiaryEntry? = nil
+    /// 다시 말하기(기록 교체) 모드. 저장 시점에 대상 날짜의 기존 기록·음성을 새 기록으로 교체한다.
+    var replaceExisting: Bool = false
     /// 흐름이 끝났을 때(결과 확인 후) 호출. 캘린더에서 시트로 띄운 경우 시트 닫기/새로고침에 사용.
     var onFinish: (() -> Void)? = nil
 
@@ -46,6 +48,7 @@ struct RecordFlowView: View {
             if viewModel == nil {
                 let vm = RecordFlowViewModel(
                     targetDate: targetDate,
+                    replaceExisting: replaceExisting,
                     audioService: di.audioService,
                     speechService: di.speechService,
                     analysisService: di.analysisService,
