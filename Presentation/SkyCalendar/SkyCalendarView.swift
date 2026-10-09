@@ -218,13 +218,24 @@ struct SkyCalendarView: View {
         let normalized = calendar.startOfDay(for: day)
         // 미래/오늘 판단은 새벽 4시 경계(BlueHourCalendar)를 따른다
         let isFuture = viewModel.isFuture(normalized)
+        let entry = viewModel.entry(for: normalized)
         let sky = viewModel.skyByDay[normalized]
+        // 기록은 있는데 아직 하늘이 그려지지 않은 날
+        let isUndrawn = entry != nil && sky == nil
 
         return RoundedRectangle(cornerRadius: BHMetrics.cornerS, style: .continuous)
-            .fill(sky?.weatherType.tileColor ?? Color.bhCloudGray.opacity(0.25))
+            .fill(tileFill(sky: sky, isUndrawn: isUndrawn))
             .aspectRatio(1, contentMode: .fit)
             // 미래 날짜는 흐리게 표시해 비활성임을 알린다
             .opacity(isFuture ? 0.35 : 1)
+            .overlay {
+                // '아직 그려지지 않은 하늘'은 작은 점으로 빈 날과 구분한다
+                if isUndrawn {
+                    Circle()
+                        .fill(Color.bhTextSecondary.opacity(0.5))
+                        .frame(width: 5, height: 5)
+                }
+            }
             .overlay(alignment: .bottomTrailing) {
                 Text("\(calendar.component(.day, from: day))")
                     .font(.system(size: 9))
@@ -233,8 +244,8 @@ struct SkyCalendarView: View {
             }
             .contentShape(Rectangle())
             .onTapGesture {
-                if let entry = viewModel.entry(for: normalized) {
-                    // 채워진 날짜 → 그날의 하늘 보기
+                if let entry {
+                    // 기록이 있는 날(하늘 유무와 무관) → 그날의 상세 보기
                     selectedEntry = entry
                 } else if !isFuture {
                     // 빈 과거/오늘 날짜 → 확인 후 기록 플로우 진입
@@ -242,5 +253,11 @@ struct SkyCalendarView: View {
                 }
                 // 미래 날짜 → 반응 없음
             }
+    }
+
+    private func tileFill(sky: SkyAnalysis?, isUndrawn: Bool) -> Color {
+        if let sky { return sky.weatherType.tileColor }
+        if isUndrawn { return Color.bhCloudGray.opacity(0.45) }
+        return Color.bhCloudGray.opacity(0.25)
     }
 }

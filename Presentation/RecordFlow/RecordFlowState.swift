@@ -17,6 +17,7 @@ enum RecordFlowState: Equatable {
     case reviewing          // 변환된 텍스트 확인/수정
     case analyzing          // AI가 하늘을 읽는 중
     case result             // 오늘의 하늘 완성
+    case savedWithoutSky    // AI를 쓸 수 없어 하늘 없이 저장됨 (아직 그려지지 않은 하늘)
     case permissionDenied   // 마이크 권한 거부
     case failed(String)     // 오류 발생 (메시지 포함)
 }

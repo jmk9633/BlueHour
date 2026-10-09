@@ -23,6 +23,7 @@ final class DIContainer {
 
     private var modelContext: ModelContext?
     private var _diaryRepository: DiaryRepositoryProtocol?
+    private var _pendingAnalyzer: PendingSkyAnalyzer?
 
     /// 리포지토리 접근. ModelContext가 연결되기 전에 부르면 잘못된 사용이므로 크래시.
     var diaryRepository: DiaryRepositoryProtocol {
@@ -30,6 +31,14 @@ final class DIContainer {
             fatalError("DIContainer에 ModelContext가 아직 연결되지 않았습니다. setup(modelContext:)를 먼저 호출하세요.")
         }
         return repository
+    }
+
+    /// '아직 그려지지 않은 하늘' 자동 분석기.
+    var pendingAnalyzer: PendingSkyAnalyzer {
+        guard let analyzer = _pendingAnalyzer else {
+            fatalError("DIContainer에 ModelContext가 아직 연결되지 않았습니다. setup(modelContext:)를 먼저 호출하세요.")
+        }
+        return analyzer
     }
 
     // MARK: - 초기화
@@ -47,6 +56,11 @@ final class DIContainer {
     func setup(modelContext: ModelContext) {
         guard _diaryRepository == nil else { return }  // 중복 방지
         self.modelContext = modelContext
-        self._diaryRepository = DiaryRepository(context: modelContext)
+        let repository = DiaryRepository(context: modelContext)
+        self._diaryRepository = repository
+        self._pendingAnalyzer = PendingSkyAnalyzer(
+            repository: repository,
+            analysisService: analysisService
+        )
     }
 }

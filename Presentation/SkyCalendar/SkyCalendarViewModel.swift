@@ -124,11 +124,14 @@ final class SkyCalendarViewModel {
         var counts: [SkyWeatherType: Int] = [:]
 
         for entry in entries {
-            guard let analysis = entry.analysis else { continue }
             let day = Calendar.current.startOfDay(for: entry.date)
-            byDay[day] = analysis
+            // 하늘이 없는 기록('아직 그려지지 않은 하늘')도 entriesByDay에는 넣는다.
+            // 그래야 그 날을 눌렀을 때 빈 날로 오인해 새 기록을 만들지 않고 상세를 연다.
             entryByDay[day] = entry
-            counts[analysis.weatherType, default: 0] += 1
+            if let analysis = entry.analysis {
+                byDay[day] = analysis
+                counts[analysis.weatherType, default: 0] += 1
+            }
         }
 
         skyByDay = byDay

@@ -123,6 +123,15 @@ struct RecordFlowView: View {
                     }
                 }
             }
+        case .savedWithoutSky:
+            UndrawnSkyResultView {
+                // 결과 카드와 동일한 닫기 동작 (시트면 닫기, 오늘 탭이면 처음으로)
+                if let onFinish {
+                    onFinish()
+                } else {
+                    Task { await viewModel.restart() }
+                }
+            }
         case .failed(let message):
             FailureView(message: message) {
                 Task { await viewModel.restart() }

@@ -77,10 +77,14 @@ actor FakeSpeechRecognitionService: SpeechRecognitionServiceProtocol {
 
 actor FakeSkyAnalysisService: SkyAnalysisServiceProtocol {
     var result: SkyAnalysis
+    var available: Bool
 
-    init(result: SkyAnalysis = FakeSkyAnalysisService.defaultSky) {
+    init(result: SkyAnalysis = FakeSkyAnalysisService.defaultSky, available: Bool = true) {
         self.result = result
+        self.available = available
     }
+
+    func isAvailable() async -> Bool { available }
 
     func analyze(text: String) async throws -> SkyAnalysis { result }
 
@@ -91,6 +95,36 @@ actor FakeSkyAnalysisService: SkyAnalysisServiceProtocol {
         emotionKeywords: ["평온"],
         tomorrowSentence: "편안한 밤 보내요."
     )
+}
+
+// MARK: - 하늘 생성기 (오케스트레이터 테스트용)
+
+/// 호출마다 미리 정해진 결과를 돌려주고, 호출 횟수와 reinforced 플래그를 기록한다.
+actor FakeSkyGenerator: GeneratedSkyProducing {
+    private let outputs: [Result<SkyAnalysis, Error>]
+    private let available: Bool
+    private(set) var callCount = 0
+    private(set) var reinforcedFlags: [Bool] = []
+
+    init(outputs: [Result<SkyAnalysis, Error>], available: Bool = true) {
+        self.outputs = outputs
+        self.available = available
+    }
+
+    func isAvailable() async -> Bool { available }
+
+    func produce(text: String, reinforced: Bool) async throws -> SkyAnalysis {
+        let index = callCount
+        callCount += 1
+        reinforcedFlags.append(reinforced)
+        guard index < outputs.count else {
+            throw SkyAnalysisError.analysisFailed
+        }
+        switch outputs[index] {
+        case .success(let sky): return sky
+        case .failure(let error): throw error
+        }
+    }
 }
 
 // MARK: - 일기 저장소 (인메모리)

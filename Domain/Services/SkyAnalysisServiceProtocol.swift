@@ -15,6 +15,9 @@ enum SkyAnalysisError: Error, Sendable {
 }
 
 protocol SkyAnalysisServiceProtocol: Sendable {
+    /// AI 분석을 지금 사용할 수 있는지.
+    func isAvailable() async -> Bool
+
     /// 일기 텍스트를 받아 "오늘의 하늘"로 분석.
     /// 절대 진단하지 않으며, 감정을 날씨 은유로 번역한다.
     func analyze(text: String) async throws -> SkyAnalysis

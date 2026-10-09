@@ -307,6 +307,12 @@ final class RecordFlowViewModel {
             self.analysis = sky
             try await save(text: text, sky: sky)
             state = .result
+        } catch SkyAnalysisError.modelUnavailable {
+            // AI를 쓸 수 없으면 하늘 없이 저장한다('아직 그려지지 않은 하늘').
+            // 나중에 AI를 쓸 수 있게 되면 PendingSkyAnalyzer가 자동으로 하늘을 채운다.
+            self.analysis = nil
+            try? await save(text: text, sky: nil)
+            state = .savedWithoutSky
         } catch {
             state = .failed("오늘의 하늘을 만들지 못했어요. 잠시 후 다시 시도해 주세요.")
         }
@@ -314,7 +320,7 @@ final class RecordFlowViewModel {
 
     // MARK: - 저장 (도메인 모델 조립 후 리포지토리에 위임)
 
-    private func save(text: String, sky: SkyAnalysis) async throws {
+    private func save(text: String, sky: SkyAnalysis?) async throws {
         // 수정 모드: 기존 엔트리를 덮어쓴다 (id·date·녹음 유지, transcript·analysis·updatedAt 갱신).
         if let editing = editingEntry {
             let transcript = DiaryTranscript(
