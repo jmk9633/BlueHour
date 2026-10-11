@@ -78,19 +78,24 @@ actor FakeSpeechRecognitionService: SpeechRecognitionServiceProtocol {
 actor FakeSkyAnalysisService: SkyAnalysisServiceProtocol {
     var result: SkyAnalysis
     var available: Bool
+    var deviceEligible: Bool
     var errorToThrow: Error?
 
     init(
         result: SkyAnalysis = FakeSkyAnalysisService.defaultSky,
         available: Bool = true,
+        deviceEligible: Bool = true,
         errorToThrow: Error? = nil
     ) {
         self.result = result
         self.available = available
+        self.deviceEligible = deviceEligible
         self.errorToThrow = errorToThrow
     }
 
     func isAvailable() async -> Bool { available }
+
+    func isDeviceEligible() async -> Bool { deviceEligible }
 
     func analyze(text: String) async throws -> SkyAnalysis {
         if let errorToThrow { throw errorToThrow }
@@ -121,6 +126,8 @@ actor FakeSkyGenerator: GeneratedSkyProducing {
     }
 
     func isAvailable() async -> Bool { available }
+
+    func isDeviceEligible() async -> Bool { available }
 
     func produce(text: String, reinforced: Bool) async throws -> SkyAnalysis {
         let index = callCount
@@ -181,4 +188,20 @@ actor FakeDiaryRepository: DiaryRepositoryProtocol {
     // 조회 헬퍼
     var lastSaved: DiaryEntry? { saved.last }
     var lastUpdated: DiaryEntry? { updated.last }
+}
+
+// MARK: - 생체/암호 인증
+
+/// 인증 가능 여부와 인증 성공 여부를 주입해 잠금 전환 로직을 결정적으로 검증한다.
+struct FakeBiometricAuthenticator: BiometricAuthenticating {
+    var canAuthenticateResult: Bool
+    var authenticateResult: Bool
+
+    init(canAuthenticate: Bool = true, authenticate: Bool = true) {
+        self.canAuthenticateResult = canAuthenticate
+        self.authenticateResult = authenticate
+    }
+
+    func canAuthenticate() -> Bool { canAuthenticateResult }
+    func authenticate(reason: String) async -> Bool { authenticateResult }
 }

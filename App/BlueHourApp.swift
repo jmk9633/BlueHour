@@ -33,7 +33,7 @@ struct BlueHourApp: App {
 
     var body: some Scene {
         WindowGroup {
-            MainTabView()
+            RootView()
                 .diContainer(container)              // 화면 전체에 DI 주입
         }
         .modelContainer(modelContainer)              // SwiftData 주입

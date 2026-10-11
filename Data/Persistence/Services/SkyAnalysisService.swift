@@ -32,6 +32,10 @@ actor SkyAnalysisService: SkyAnalysisServiceProtocol {
         await generator.isAvailable()
     }
 
+    func isDeviceEligible() async -> Bool {
+        await generator.isDeviceEligible()
+    }
+
     func analyze(text: String) async throws -> SkyAnalysis {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {

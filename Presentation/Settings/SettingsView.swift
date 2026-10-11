@@ -37,8 +37,17 @@ struct SettingsView: View {
                 Toggle("Face ID로 잠그기", isOn: bindFaceID(viewModel))
             }
 
-            Section("음성") {
-                Toggle("원본 음성 기기에 저장", isOn: bindSaveAudio(viewModel))
+            Section {
+                Picker("음성 저장 방식", selection: bindSaveAudio(viewModel)) {
+                    Text("목소리 남기기").tag(true)
+                    Text("글과 하늘만 남기기").tag(false)
+                }
+                .pickerStyle(.inline)
+                .labelsHidden()
+            } header: {
+                Text("음성")
+            } footer: {
+                Text("새로 만드는 기록부터 적용돼요. 지난 기록은 그대로예요.")
             }
 
             Section("데이터") {
@@ -72,12 +81,21 @@ struct SettingsView: View {
         } message: {
             Text("삭제한 하늘은 되돌릴 수 없어요.")
         }
+        .alert("잠금을 사용할 수 없어요", isPresented: bindLockUnavailableAlert(viewModel)) {
+            Button("확인", role: .cancel) { }
+        } message: {
+            Text("기기에 암호를 설정하면 잠금을 사용할 수 있어요.")
+        }
     }
 
     // MARK: - 바인딩 헬퍼 (Observable 속성을 Toggle/alert에 연결)
 
     private func bindFaceID(_ vm: SettingsViewModel) -> Binding<Bool> {
-        Binding(get: { vm.useFaceIDLock }, set: { vm.useFaceIDLock = $0 })
+        // 켜기는 인증을 거쳐야 하므로, 토글 조작을 ViewModel에 비동기로 위임한다.
+        // (인증 실패·불가 시 useFaceIDLock이 그대로라 토글이 되돌아온다.)
+        Binding(get: { vm.useFaceIDLock }, set: { newValue in
+            Task { await vm.requestFaceIDLock(newValue) }
+        })
     }
 
     private func bindSaveAudio(_ vm: SettingsViewModel) -> Binding<Bool> {
@@ -86,5 +104,9 @@ struct SettingsView: View {
 
     private func bindDeleteAlert(_ vm: SettingsViewModel) -> Binding<Bool> {
         Binding(get: { vm.showDeleteConfirmation }, set: { if !$0 { vm.cancelDelete() } })
+    }
+
+    private func bindLockUnavailableAlert(_ vm: SettingsViewModel) -> Binding<Bool> {
+        Binding(get: { vm.showLockUnavailableAlert }, set: { vm.showLockUnavailableAlert = $0 })
     }
 }

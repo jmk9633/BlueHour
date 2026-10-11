@@ -105,6 +105,16 @@ actor FoundationModelSkyGenerator: GeneratedSkyProducing {
         return false
     }
 
+    func isDeviceEligible() async -> Bool {
+        // 하드웨어가 지원하지 않는 경우(deviceNotEligible)만 false.
+        // Apple Intelligence 꺼짐(appleIntelligenceNotEnabled)·모델 준비중(modelNotReady)은
+        // '지원 기기'이므로 true로 둔다.
+        if case .unavailable(.deviceNotEligible) = SystemLanguageModel.default.availability {
+            return false
+        }
+        return true
+    }
+
     func produce(text: String, reinforced: Bool) async throws -> SkyAnalysis {
         // 1. 모델 사용 가능 여부 확인
         switch SystemLanguageModel.default.availability {
