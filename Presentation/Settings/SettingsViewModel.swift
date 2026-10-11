@@ -32,15 +32,21 @@ final class SettingsViewModel {
     private let audioService: AudioRecordingService
     private let authenticator: BiometricAuthenticating
     private let defaults: UserDefaults
+    private let freeSkyCounter: FreeSkyCounter
+    let purchaseController: PurchaseController
 
     init(
         repository: DiaryRepositoryProtocol,
         audioService: AudioRecordingService,
+        freeSkyCounter: FreeSkyCounter,
+        purchaseController: PurchaseController,
         authenticator: BiometricAuthenticating = BiometricAuthenticator(),
         defaults: UserDefaults = .standard
     ) {
         self.repository = repository
         self.audioService = audioService
+        self.freeSkyCounter = freeSkyCounter
+        self.purchaseController = purchaseController
         self.authenticator = authenticator
         self.defaults = defaults
         // 기본값은 AppSettings.registerDefaults로 등록된다 (saveOriginalAudio = true).
@@ -71,6 +77,22 @@ final class SettingsViewModel {
     private func setLock(_ value: Bool) {
         useFaceIDLock = value
         defaults.set(value, forKey: AppSettings.Keys.useFaceIDLock)
+    }
+
+    // MARK: - 구매 · 무료 하늘 카운트 (F-XUQOXA / F-WURMKT)
+
+    /// 평생 이용권 보유 여부. true면 카운트를 숨기고 '평생 이용 중'만 표시한다.
+    var isUnlocked: Bool { purchaseController.isUnlocked }
+
+    /// 지금까지 새로 만든 무료 하늘 수.
+    var freeCount: Int { freeSkyCounter.count }
+
+    /// 무료 하늘 한도(30).
+    var freeLimit: Int { freeSkyCounter.limit }
+
+    /// 구매 복원. 결과 안내 문구를 돌려준다. (F-WURMKT display 그대로)
+    func restore() async -> String {
+        await purchaseController.restore()
     }
 
     // MARK: - 기록 전체 삭제

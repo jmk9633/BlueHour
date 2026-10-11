@@ -14,6 +14,10 @@ struct SkyCalendarView: View {
     @State private var recordTarget: RecordTarget?
     /// 빈 날짜를 탭했을 때 '이 날의 하늘을 남길까요?' 확인을 거칠 대상 날짜
     @State private var pendingRecordDate: Date?
+    /// 무료 한도 도달 시 구매 화면을 띄울지 여부
+    @State private var showPurchase = false
+    /// 구매 성공 후 바로 기록을 시작할 대상 날짜 (빈 과거 날짜 입구에서 막혔던 날)
+    @State private var purchaseTargetDate: Date?
 
     // 연·월 휠 피커 상태
     @State private var showMonthPicker = false
@@ -40,7 +44,11 @@ struct SkyCalendarView: View {
         }
         .task {
             if viewModel == nil {
-                let vm = SkyCalendarViewModel(repository: di.diaryRepository)
+                let vm = SkyCalendarViewModel(
+                    repository: di.diaryRepository,
+                    entitlement: di.purchaseController,
+                    counter: di.freeSkyCounter
+                )
                 viewModel = vm
                 await vm.load()
             }
@@ -68,6 +76,19 @@ struct SkyCalendarView: View {
         .sheet(isPresented: $showMonthPicker) {
             if let viewModel {
                 monthPickerSheet(viewModel)
+            }
+        }
+        // 무료 한도 도달 시 구매 화면. 구매 성공 후 막혔던 날짜의 기록으로 바로 이어간다.
+        .sheet(isPresented: $showPurchase) {
+            PurchaseView(
+                controller: di.purchaseController,
+                analysisService: di.analysisService
+            ) {
+                if let date = purchaseTargetDate {
+                    recordTarget = RecordTarget(date: date)
+                }
+                purchaseTargetDate = nil
+                showPurchase = false
             }
         }
         // 빈 과거/오늘 날짜를 탭하면 먼저 확인을 거친 뒤 기록 플로우로 진입
@@ -248,8 +269,15 @@ struct SkyCalendarView: View {
                     // 기록이 있는 날(하늘 유무와 무관) → 그날의 상세 보기
                     selectedEntry = entry
                 } else if !isFuture {
-                    // 빈 과거/오늘 날짜 → 확인 후 기록 플로우 진입
-                    pendingRecordDate = normalized
+                    // 빈 과거/오늘 날짜 → 무료 한도 확인(확인 알림보다 먼저) 후 기록 플로우 진입
+                    Task {
+                        if await viewModel.canStartNewEntry() {
+                            pendingRecordDate = normalized
+                        } else {
+                            purchaseTargetDate = normalized
+                            showPurchase = true
+                        }
+                    }
                 }
                 // 미래 날짜 → 반응 없음
             }

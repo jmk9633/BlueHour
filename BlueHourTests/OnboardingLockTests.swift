@@ -193,6 +193,8 @@ final class OnboardingLockTests: XCTestCase {
         SettingsViewModel(
             repository: FakeDiaryRepository(),
             audioService: AudioRecordingService(),
+            freeSkyCounter: FreeSkyCounter(store: InMemoryFreeSkyCountStore()),
+            purchaseController: PurchaseController(service: FakePurchaseService()),
             authenticator: authenticator,
             defaults: defaults
         )

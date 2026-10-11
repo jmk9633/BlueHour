@@ -19,6 +19,13 @@ final class DIContainer {
     let speechService: SpeechRecognitionService
     let analysisService: SkyAnalysisService
 
+    // MARK: - 구매 · 무료 하늘 카운트 (6단계)
+
+    /// 무료 하늘 카운트(키체인 저장). 새 기록 저장 시에만 증가.
+    let freeSkyCounter: FreeSkyCounter
+    /// 구매 상태(평생 이용권 보유 여부). 앱 실행 동안 트랜잭션 업데이트를 듣는다.
+    let purchaseController: PurchaseController
+
     // MARK: - 리포지토리 (ModelContext 필요, 나중에 주입)
 
     private var modelContext: ModelContext?
@@ -49,6 +56,12 @@ final class DIContainer {
         self.audioService = audio
         self.speechService = SpeechRecognitionService(audioService: audio)
         self.analysisService = SkyAnalysisService()
+
+        // 무료 카운트는 키체인에, 구매 상태는 StoreKit 2로 확인한다.
+        self.freeSkyCounter = FreeSkyCounter(store: KeychainFreeSkyCountStore())
+        self.purchaseController = PurchaseController(service: StoreKitPurchaseService())
+        // 앱 실행 즉시 구매 여부 확인·트랜잭션 청취를 시작한다.
+        purchaseController.start()
     }
 
     // MARK: - ModelContext 연결 (앱 진입점에서 1회 호출)

@@ -17,6 +17,8 @@ enum AppSettings {
         static let saveOriginalAudio = "settings.saveOriginalAudio"
         /// 첫 실행 안내를 끝까지 마쳤는지 여부
         static let hasCompletedOnboarding = "settings.hasCompletedOnboarding"
+        /// 무료 한도(30번째 하늘) 안내를 결과 카드에서 이미 한 번 보여줬는지 여부
+        static let hasShownFreeLimitNotice = "settings.hasShownFreeLimitNotice"
     }
 
     /// 앱 시작 시 한 번 호출해 기본값을 등록한다.
@@ -26,7 +28,8 @@ enum AppSettings {
         defaults.register(defaults: [
             Keys.saveOriginalAudio: true,
             Keys.useFaceIDLock: false,
-            Keys.hasCompletedOnboarding: false
+            Keys.hasCompletedOnboarding: false,
+            Keys.hasShownFreeLimitNotice: false
         ])
     }
 }

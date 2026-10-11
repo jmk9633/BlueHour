@@ -39,7 +39,7 @@ struct PermissionDeniedView: View {
                 .buttonStyle(.bhPrimary)
 
                 Button("텍스트로 쓰기") {
-                    viewModel.writeWithoutRecording()
+                    Task { await viewModel.beginTextWriting() }
                 }
                 .font(.bhCaption)
                 .foregroundStyle(Color.bhTextSecondary)

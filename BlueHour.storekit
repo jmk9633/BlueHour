@@ -1,0 +1,45 @@
+{
+  "appPolicies" : {
+    "eula" : "",
+    "policies" : [
+      {
+        "locale" : "ko_KR",
+        "policyText" : "",
+        "policyURL" : ""
+      }
+    ]
+  },
+  "identifier" : "A1B2C3D4",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "4400",
+      "familyShareable" : false,
+      "internalID" : "B1C2D3E4",
+      "localizations" : [
+        {
+          "description" : "블루아워를 한 번 구매로 평생 이용",
+          "displayName" : "평생 이용권",
+          "locale" : "ko_KR"
+        }
+      ],
+      "productID" : "academy.credo.BlueHour.lifetime",
+      "referenceName" : "평생 이용권",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_storeKitErrors" : [
+
+    ]
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

@@ -10,6 +10,8 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(\.di) private var di
     @State private var viewModel: SettingsViewModel?
+    @State private var showPurchase = false
+    @State private var restoreMessage: String?
 
     var body: some View {
         ZStack {
@@ -25,7 +27,9 @@ struct SettingsView: View {
             if viewModel == nil {
                 viewModel = SettingsViewModel(
                     repository: di.diaryRepository,
-                    audioService: di.audioService
+                    audioService: di.audioService,
+                    freeSkyCounter: di.freeSkyCounter,
+                    purchaseController: di.purchaseController
                 )
             }
         }
@@ -61,11 +65,39 @@ struct SettingsView: View {
                 }
             }
 
+            Section("이용") {
+                if viewModel.isUnlocked {
+                    HStack {
+                        Text("이용 상태")
+                        Spacer()
+                        Text("평생 이용 중")
+                            .foregroundStyle(Color.bhTextSecondary)
+                    }
+                } else {
+                    Button {
+                        showPurchase = true
+                    } label: {
+                        HStack {
+                            Text("무료로 담은 하늘")
+                            Spacer()
+                            Text("\(viewModel.freeCount) / \(viewModel.freeLimit)")
+                                .foregroundStyle(Color.bhTextSecondary)
+                        }
+                    }
+                    .foregroundStyle(Color.bhTextPrimary)
+                }
+
+                Button("구매 복원") {
+                    Task { restoreMessage = await viewModel.restore() }
+                }
+                .foregroundStyle(Color.bhTextPrimary)
+            }
+
             Section {
                 HStack {
                     Text("앱 정보")
                     Spacer()
-                    Text("블루아워 v0")
+                    Text("블루아워 \(appVersion)")
                         .foregroundStyle(Color.bhTextSecondary)
                 }
             }
@@ -73,6 +105,19 @@ struct SettingsView: View {
         .scrollContentBackground(.hidden)
         .background(Color.bhBackground)
         .font(.bhBody)
+        .sheet(isPresented: $showPurchase) {
+            PurchaseView(
+                controller: viewModel.purchaseController,
+                analysisService: di.analysisService
+            ) {
+                showPurchase = false
+            }
+        }
+        .alert("구매 복원", isPresented: bindRestoreAlert()) {
+            Button("확인", role: .cancel) { restoreMessage = nil }
+        } message: {
+            Text(restoreMessage ?? "")
+        }
         .alert("모든 기록을 삭제할까요?", isPresented: bindDeleteAlert(viewModel)) {
             Button("취소", role: .cancel) { viewModel.cancelDelete() }
             Button("삭제", role: .destructive) {
@@ -88,7 +133,18 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - 앱 버전 (F-SAZNQX)
+
+    private var appVersion: String {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String
+        return version ?? "0"
+    }
+
     // MARK: - 바인딩 헬퍼 (Observable 속성을 Toggle/alert에 연결)
+
+    private func bindRestoreAlert() -> Binding<Bool> {
+        Binding(get: { restoreMessage != nil }, set: { if !$0 { restoreMessage = nil } })
+    }
 
     private func bindFaceID(_ vm: SettingsViewModel) -> Binding<Bool> {
         // 켜기는 인증을 거쳐야 하므로, 토글 조작을 ViewModel에 비동기로 위임한다.

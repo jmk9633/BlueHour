@@ -64,7 +64,7 @@ struct SkyDetailView: View {
                 }
             }
         } message: {
-            Text("지운 기록은 되돌릴 수 없어요.")
+            Text(deleteMessage)
         }
         .alert("이 날의 목소리를 지울까요?", isPresented: $showEraseConfirmation) {
             Button("취소", role: .cancel) {}
@@ -87,6 +87,17 @@ struct SkyDetailView: View {
         .sheet(item: $activeSheet) { sheet in
             recordFlowSheet(sheet)
         }
+    }
+
+    // MARK: - 삭제 확인 문구 (F-MDQVXP)
+
+    /// 미구매 사용자에게는 삭제해도 무료 카운트가 줄지 않음을 함께 안내한다.
+    private var deleteMessage: String {
+        let base = "지운 기록은 되돌릴 수 없어요."
+        if di.purchaseController.isUnlocked {
+            return base
+        }
+        return base + "\n지워도 무료로 담은 하늘 수는 줄어들지 않아요."
     }
 
     // MARK: - 본문

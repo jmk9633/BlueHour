@@ -41,7 +41,7 @@ struct TodayView: View {
                 Spacer()
 
                 Button("오늘 말하기") {
-                    Task { await viewModel.startRecording() }
+                    Task { await viewModel.beginRecording() }
                 }
                 .buttonStyle(.bhPrimary)
             }

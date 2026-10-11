@@ -31,9 +31,26 @@ final class SkyCalendarViewModel {
     // MARK: - 의존성
 
     private let repository: DiaryRepositoryProtocol
+    /// 구매 여부(평생 이용권). nil이면 제한 없음.
+    private let entitlement: EntitlementProviding?
+    /// 무료 하늘 카운트. nil이면 카운트하지 않음.
+    private let counter: FreeSkyCounting?
 
-    init(repository: DiaryRepositoryProtocol) {
+    init(
+        repository: DiaryRepositoryProtocol,
+        entitlement: EntitlementProviding? = nil,
+        counter: FreeSkyCounting? = nil
+    ) {
         self.repository = repository
+        self.entitlement = entitlement
+        self.counter = counter
+    }
+
+    // MARK: - 새 기록 입구 게이트 (빈 과거 날짜 탭)
+
+    /// 빈 과거 날짜에 새 기록을 시작해도 되는지. '이 날의 하늘을 남길까요?' 확인보다 먼저 확인한다.
+    func canStartNewEntry() async -> Bool {
+        await NewEntryGate.canStartNewEntry(entitlement: entitlement, counter: counter)
     }
 
     // MARK: - 표시용 문자열

@@ -34,6 +34,12 @@ final class RecordFlowViewModel {
     /// 없으면 빈 하늘 안내와 [오늘 말하기] 버튼을 보여준다.
     private(set) var existingEntry: DiaryEntry?
 
+    /// 무료 한도에 도달해 새 기록을 막아야 할 때 true. 화면이 구매 화면을 띄운다. (F-XUQOXA)
+    var showPurchase: Bool = false
+
+    /// 30번째 무료 하늘을 저장해 결과 카드에서 한 번 안내해야 할 때 true. (PL-OBQXIP)
+    private(set) var reachedFreeLimitNotice: Bool = false
+
     // MARK: - 설정값
 
     let maxDuration: TimeInterval = 60   // 최대 60초
@@ -73,6 +79,11 @@ final class RecordFlowViewModel {
     private let repository: DiaryRepositoryProtocol
     private let defaults: UserDefaults
 
+    /// 구매 여부(평생 이용권). nil이면 제한 없음(테스트 등).
+    private let entitlement: EntitlementProviding?
+    /// 무료 하늘 카운트. nil이면 카운트하지 않음(테스트 등).
+    private let freeSkyCounter: FreeSkyCounting?
+
     // MARK: - 내부 상태
 
     private var recordedFileName: String?
@@ -90,6 +101,14 @@ final class RecordFlowViewModel {
     /// 이 교체 경로는 향후 '다시 말하기(F-PFVBLO)'가 true로 재사용한다.
     private let replaceExisting: Bool
 
+    /// 구매 화면을 연 직후, 구매 성공 시 이어갈 원래 입구 동작.
+    private var pendingEntry: PendingEntry?
+
+    private enum PendingEntry {
+        case recording      // [오늘 말하기]
+        case textWriting    // 텍스트로 쓰기
+    }
+
     // MARK: - 초기화
 
     init(
@@ -99,7 +118,9 @@ final class RecordFlowViewModel {
         speechService: SpeechRecognitionServiceProtocol,
         analysisService: SkyAnalysisServiceProtocol,
         repository: DiaryRepositoryProtocol,
-        defaults: UserDefaults = .standard
+        defaults: UserDefaults = .standard,
+        entitlement: EntitlementProviding? = nil,
+        freeSkyCounter: FreeSkyCounting? = nil
     ) {
         self.targetDate = targetDate
         self.replaceExisting = replaceExisting
@@ -108,6 +129,8 @@ final class RecordFlowViewModel {
         self.analysisService = analysisService
         self.repository = repository
         self.defaults = defaults
+        self.entitlement = entitlement
+        self.freeSkyCounter = freeSkyCounter
     }
 
     // MARK: - 대상 날짜의 기존 기록 확인 (진입/복귀/저장 후 호출)
@@ -121,11 +144,61 @@ final class RecordFlowViewModel {
         existingEntry = try? await repository.fetchEntry(on: targetDate)
     }
 
+    // MARK: - 새 기록 입구 게이트 (무료 30개 / 구매)
+
+    /// 새 기록을 시작해도 되는지. 구매 여부 확인이 끝날 때까지 기다린 뒤 판단한다.
+    /// 수정·다시 말하기(replaceExisting)는 이 게이트를 거치지 않는다.
+    func canStartNewEntry() async -> Bool {
+        if replaceExisting { return true }
+        return await NewEntryGate.canStartNewEntry(entitlement: entitlement, counter: freeSkyCounter)
+    }
+
+    /// [오늘 말하기] 입구. 권한 요청보다 먼저 게이트를 확인하고, 통과하면 녹음을 시작한다.
+    func beginRecording() async {
+        guard await canStartNewEntry() else {
+            pendingEntry = .recording
+            showPurchase = true
+            return
+        }
+        await startRecording()
+    }
+
+    /// '텍스트로 쓰기' 입구. 게이트를 먼저 확인하고, 통과하면 녹음 없이 리뷰 화면으로 전환한다.
+    func beginTextWriting() async {
+        guard await canStartNewEntry() else {
+            pendingEntry = .textWriting
+            showPurchase = true
+            return
+        }
+        writeWithoutRecording()
+    }
+
+    /// 구매 성공 후, 원래 하려던 입구의 동작으로 이어간다.
+    func resumeAfterPurchase() async {
+        showPurchase = false
+        let entry = pendingEntry
+        pendingEntry = nil
+        switch entry {
+        case .recording:
+            await startRecording()
+        case .textWriting:
+            writeWithoutRecording()
+        case .none:
+            break
+        }
+    }
+
     // MARK: - 1. 녹음 시작
 
     func startRecording() async {
         // 하루 1개 정책: 이미 기록이 있으면 새 녹음을 시작하지 않는다(진입 단계 차단).
         guard existingEntry == nil else { return }
+
+        // 안전망: 입구 게이트를 우회해 들어와도 한도를 넘긴 미구매 상태면 녹음을 시작하지 않는다.
+        guard await canStartNewEntry() else {
+            showPurchase = true
+            return
+        }
 
         // 권한 확인 — 거부되면 권한 안내 화면으로
         let micGranted = await audioService.requestPermission()
@@ -357,9 +430,6 @@ final class RecordFlowViewModel {
         // 이 삭제는 '새 기록을 실제로 저장하는 지금 시점'에만 일어난다.
         // (녹음 시작·녹음 중 취소·텍스트 확인 단계 이탈·앱 종료 시에는 기존 기록이 그대로 남는다.)
         // 신규 흐름은 진입 단계에서 하루 1개를 보장하므로 여기서 지우지 않는다.
-        //
-        // TODO(6단계·무료 하늘 카운트): 다시 말하기는 '기존 기록을 바꾸는 것'이므로
-        // 무료 하늘 카운트를 늘리면 안 된다. 즉 replaceExisting == true인 저장은 카운트 증가 대상에서 제외한다.
         if replaceExisting {
             try await replaceExistingEntries(on: targetDate)
         }
@@ -390,6 +460,24 @@ final class RecordFlowViewModel {
         try await repository.save(entry)
         // 저장이 끝난 파일은 이 흐름에서 더 이상 '임시 파일'이 아니므로 참조를 비운다.
         recordedFileName = nil
+
+        // 무료 하늘 카운트: 새 기록을 '실제로' 저장했을 때만 +1.
+        // 수정은 위에서 return, 다시 말하기(replaceExisting)는 '기존 기록 교체'이므로 제외한다.
+        if !replaceExisting {
+            freeSkyCounter?.increment()
+            evaluateFreeLimitNotice()
+        }
+    }
+
+    /// 30번째 무료 하늘을 저장하면 결과 카드에서 한 번만 안내한다. (PL-OBQXIP)
+    private func evaluateFreeLimitNotice() {
+        guard let counter = freeSkyCounter,
+              let entitlement, !entitlement.isUnlocked,
+              counter.count == counter.limit,
+              !defaults.bool(forKey: AppSettings.Keys.hasShownFreeLimitNotice)
+        else { return }
+        reachedFreeLimitNotice = true
+        defaults.set(true, forKey: AppSettings.Keys.hasShownFreeLimitNotice)
     }
 
     /// 대상 날짜에 등록된 기록을 모두 지운다(음성 파일 포함).

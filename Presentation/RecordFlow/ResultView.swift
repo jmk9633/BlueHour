@@ -9,6 +9,8 @@ import SwiftUI
 
 struct ResultView: View {
     let analysis: SkyAnalysis
+    /// 30번째 무료 하늘일 때 한 번 보여주는 안내. (PL-OBQXIP)
+    var showFreeLimitNotice: Bool = false
     let onClose: () -> Void
 
     var body: some View {
@@ -59,6 +61,14 @@ struct ResultView: View {
                 sectionView(title: "내일의 작은 문장", body: analysis.tomorrowSentence)
 
                 Spacer(minLength: BHMetrics.spacingL)
+
+                if showFreeLimitNotice {
+                    Text("무료로 담을 수 있는 하늘을 모두 채웠어요.")
+                        .font(.bhCaption)
+                        .foregroundStyle(Color.bhTextSecondary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                }
 
                 Button("오늘은 여기까지") { onClose() }
                     .buttonStyle(.bhPrimary)

@@ -190,6 +190,80 @@ actor FakeDiaryRepository: DiaryRepositoryProtocol {
     var lastUpdated: DiaryEntry? { updated.last }
 }
 
+// MARK: - 무료 하늘 카운트 저장소 (인메모리)
+
+/// 키체인 대신 메모리에 값을 둔다. 같은 인스턴스를 재사용하면 '재설치해도 유지'를 흉내낼 수 있다.
+final class InMemoryFreeSkyCountStore: FreeSkyCountStoring, @unchecked Sendable {
+    private var value: Int
+    init(initial: Int = 0) { self.value = initial }
+    func load() -> Int { value }
+    func save(_ count: Int) { value = count }
+}
+
+// MARK: - 구매 여부 제공자 (게이트 테스트용)
+
+/// 구매 여부와 '준비 완료' 시점을 제어해 입구 게이트를 결정적으로 검증한다.
+@MainActor
+final class FakeEntitlement: EntitlementProviding {
+    var isUnlocked: Bool
+    private var ready: Bool
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    init(isUnlocked: Bool = false, ready: Bool = true) {
+        self.isUnlocked = isUnlocked
+        self.ready = ready
+    }
+
+    func waitUntilReady() async {
+        if ready { return }
+        await withCheckedContinuation { waiters.append($0) }
+    }
+
+    /// 구매 여부 확인이 끝난 것으로 표시하고, 기다리던 호출을 모두 깨운다.
+    func markReady(unlocked: Bool) {
+        isUnlocked = unlocked
+        ready = true
+        let pending = waiters
+        waiters.removeAll()
+        pending.forEach { $0.resume() }
+    }
+}
+
+// MARK: - 구매 서비스 (StoreKit 대역)
+
+enum FakeStoreError: Error { case failed }
+
+actor FakePurchaseService: PurchaseServiceProtocol {
+    var productInfo: StoreProductInfo?
+    var purchaseOutcome: PurchaseOutcome
+    var restoreFindsPurchase: Bool
+    var unlocked: Bool
+    var throwOnRestore: Bool
+
+    init(
+        productInfo: StoreProductInfo? = StoreProductInfo(displayPrice: "₩4,400"),
+        purchaseOutcome: PurchaseOutcome = .success,
+        restoreFindsPurchase: Bool = false,
+        unlocked: Bool = false,
+        throwOnRestore: Bool = false
+    ) {
+        self.productInfo = productInfo
+        self.purchaseOutcome = purchaseOutcome
+        self.restoreFindsPurchase = restoreFindsPurchase
+        self.unlocked = unlocked
+        self.throwOnRestore = throwOnRestore
+    }
+
+    func product() async throws -> StoreProductInfo? { productInfo }
+    func purchase() async throws -> PurchaseOutcome { purchaseOutcome }
+    func restore() async throws -> Bool {
+        if throwOnRestore { throw FakeStoreError.failed }
+        return restoreFindsPurchase
+    }
+    func currentlyUnlocked() async -> Bool { unlocked }
+    nonisolated func transactionUpdates() -> AsyncStream<Void> { AsyncStream { $0.finish() } }
+}
+
 // MARK: - 생체/암호 인증
 
 /// 인증 가능 여부와 인증 성공 여부를 주입해 잠금 전환 로직을 결정적으로 검증한다.

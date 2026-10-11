@@ -83,11 +83,50 @@
 
 ---
 
+## 6단계 — 구매 · 무료 30개 카운트 ✅ 완료 (커밋됨)
+
+관련 기획: R-GPTAFT, F-XUQOXA(무료 카운트), F-MVCMCF(구매 화면), F-WURMKT(구매 복원), PL-OBQXIP(정책). 연동: F-LKCUBW/F-PVXAMM(새 기록 입구), F-MDQVXP(삭제 문구), F-SAZNQX(나 탭·버전), F-LLFPXL(하늘 없이 저장도 +1).
+상태: 빌드 성공, 전체 테스트 60개 통과(6단계 신규 15개 포함).
+
+### 무료 하늘 카운트 (F-XUQOXA / PL-OBQXIP)
+- **키체인 저장**(`KeychainFreeSkyCountStore`): `kSecAttrAccessibleAfterFirstUnlock`, `kSecAttrSynchronizable = false`. 앱 재설치·전체 삭제에도 유지되고 **감소 API 없음**(삭제해도 안 줄어듦). `FreeSkyCounter`(limit=30)가 보관·증가 담당.
+- **+1 시점**: `RecordFlowViewModel.save`의 **신규 저장 경로에서만**(오늘·과거·텍스트로 쓰기·하늘 없이 저장 포함). **제외**: 수정(`editingEntry` → update), 다시 말하기(`replaceExisting`), 자동 분석(`PendingSkyAnalyzer`는 update만), 분석·저장 실패, 녹음 취소.
+- **30번째 결과 카드 안내 1회**: `reachedFreeLimitNotice` → `ResultView`/`UndrawnSkyResultView` 하단 `"무료로 담을 수 있는 하늘을 모두 채웠어요."`. `AppSettings.Keys.hasShownFreeLimitNotice`로 1회 가드.
+
+### 새 기록 입구 게이트 (사용자 합의)
+- **공통 함수 `NewEntryGate.canStartNewEntry(entitlement:counter:)`** 를 입구 3곳에서 호출: ① 오늘 탭 [오늘 말하기](`RecordFlowViewModel.beginRecording`) ② 텍스트로 쓰기(`beginTextWriting`, `PermissionDeniedView`) ③ 하늘 달력 빈 과거 날짜(`SkyCalendarView` 탭 → 확인 알림보다 **먼저**).
+- **권한 요청보다 먼저** 확인한다. 한도 도달·미구매면 녹음 대신 구매 화면(`showPurchase`)을 매번 연다.
+- **구매 여부 확인 전 대기**: `PurchaseController.waitUntilReady()`로 앱 시작 직후 확인이 끝날 때까지 기다린 뒤 판단(구매자가 열자마자 구매 화면 보지 않도록).
+- **안전망**: `startRecording()`에도 동일 게이트를 남겨 우회 진입을 막는다. 수정·다시 말하기는 게이트 제외.
+- 구매 성공 후 원래 입구 동작으로 이어감: 녹음(`resumeAfterPurchase`)/텍스트 화면/해당 날짜 기록(캘린더는 `recordTarget`).
+
+### 구매 (StoreKit 2)
+- 비소모성 상품 1개 `academy.credo.BlueHour.lifetime`, 가족 공유 미사용. 프로토콜 `PurchaseServiceProtocol`로 감싸 Fake 테스트. 실제 구현 `StoreKitPurchaseService`(currentEntitlements·updates·AppStore.sync).
+- `PurchaseController`(@Observable): `isUnlocked`, `displayPrice`(가격 하드코딩 금지 — `Product.displayPrice`), 구매/복원/승인대기 상태. 앱 실행 시 `start()`로 권한 확인+업데이트 청취(`DIContainer.init`).
+- 구매 화면(`PurchaseView`): 제목 `"앞으로의 밤도 하늘로 남겨볼까요?"`, `"한 번 구매로 평생 이용"`, [평생 이용하기], [구매 복원], 이용약관·개인정보 링크. AI 미지원 문구는 **`isDeviceEligible()`(5단계)** 로 판별.
+- 구매 복원 문구(F-WURMKT): `"평생 이용권을 다시 불러왔어요."` / `"불러올 구매 내역이 없어요."` / 오류 시 `"잠시 후 다시 시도해 주세요."`.
+
+### 나 탭 · 삭제 문구
+- 나 탭(`SettingsView`): 미구매 `"무료로 담은 하늘 N / 30"`(탭 → 구매 화면), 구매 후 **카운트 숨기고 `"평생 이용 중"`만**. [구매 복원] 항목. 앱 정보는 번들 버전(`CFBundleShortVersionString`).
+- 삭제 모달(`SkyDetailView`, F-MDQVXP): 미구매자에게 본문에 `"지워도 무료로 담은 하늘 수는 줄어들지 않아요."` 추가.
+
+### 사용자가 직접 할 설정 (pbxproj/scheme 미수정)
+- ⚠️ **In-App Purchase capability 추가**: 타깃 BlueHour → Signing & Capabilities → + Capability → In-App Purchase.
+- ⚠️ **Scheme에 StoreKit Configuration 지정**: Edit Scheme → Run → Options → StoreKit Configuration → `BlueHour.storekit`.
+- (심사 전) App Store Connect에 같은 상품 ID로 비소모성 상품 등록.
+
+### ⚠️ 미결 항목
+- **이용약관·개인정보처리방침 URL이 임시값**(`Domain/Purchase/LegalLinks.swift`, `https://example.com/...`) — 실제 주소로 교체 필요.
+- **평생 이용권 가격 미정**(PL-OBQXIP): `BlueHour.storekit`은 임시 가격(4,400).
+
+### 6단계 신규/수정 파일
+- 신규: `Domain/Purchase/{PurchaseTypes,FreeSkyCounting,FreeSkyCounter,NewEntryGate,LegalLinks}.swift`, `Data/Persistence/Services/{KeychainFreeSkyCountStore,StoreKitPurchaseService}.swift`, `Presentation/Purchase/{PurchaseController,PurchaseView}.swift`, `BlueHourTests/PurchaseCountTests.swift`, `BlueHour.storekit`.
+- 수정: `App/{AppSettings,DIContainer}.swift`, `Presentation/RecordFlow/{RecordFlowViewModel,RecordFlowView,TodayView,PermissionDeniedView,ResultView,UndrawnSkyResultView}.swift`, `Presentation/SkyCalendar/{SkyCalendarView,SkyCalendarViewModel,SkyDetailView}.swift`, `Presentation/Settings/{SettingsView,SettingsViewModel}.swift`, `BlueHourTests/{Fakes,OnboardingLockTests}.swift`.
+
+---
+
 ## 남은 단계
 
-- **6단계 — 구매 · 무료 30개 카운트**: 하늘 30개까지 무료, 이후 한 번 구매로 평생 이용. **다시 말하기(교체)와 가져오기는 카운트 제외.**
-  - 코드 근거: `RecordFlowViewModel.save`에 `TODO(6단계·무료 하늘 카운트)` — `replaceExisting == true` 저장은 카운트 증가 대상에서 제외.
-  - ⚠️ 확인 필요: 과금/상품 ID·StoreKit 구성, 카운트 저장 위치.
 - **7단계 — 밤 리마인더**: 잠들기 전 알림. ⚠️ 확인 필요(알림 시각·권한 흐름·문구).
 - **8단계 — 내보내기 · 가져오기**: 나 탭 '데이터 내보내기' 버튼은 현재 자리만 있음(`SettingsView`, 동작 없음). ⚠️ 확인 필요(포맷·가져오기 시 카운트 처리).
 - **9단계 — 다크 모드**: 디자인 토큰(`BlueHourColors`)의 다크 매핑 미정. ⚠️ 확인 필요(토큰 매핑 규칙).
