@@ -17,15 +17,19 @@ final class SkyDetailViewModel {
 
     private let repository: DiaryRepositoryProtocol
     private let audioService: AudioRecordingServiceProtocol
+    /// 밤 리마인더. 오늘 기록 삭제 후 재예약에 쓴다. nil이면 아무 동작도 하지 않음(테스트 등).
+    private let reminder: NightReminding?
 
     init(
         entry: DiaryEntry,
         repository: DiaryRepositoryProtocol,
-        audioService: AudioRecordingServiceProtocol
+        audioService: AudioRecordingServiceProtocol,
+        reminder: NightReminding? = nil
     ) {
         self.entry = entry
         self.repository = repository
         self.audioService = audioService
+        self.reminder = reminder
     }
 
     /// 이 기록에 다시 들을 수 있는 목소리가 있는지.
@@ -41,6 +45,8 @@ final class SkyDetailViewModel {
             try? await audioService.deleteRecording(fileName: fileName)
         }
         try? await repository.delete(id: entry.id)
+        // 오늘 기록을 지웠고 아직 알림 시각 전이면 오늘 알림이 다시 예약되도록 재예약한다.
+        await reminder?.reschedule()
     }
 
     // MARK: - 목소리 지우기 (S-OZKPTH)

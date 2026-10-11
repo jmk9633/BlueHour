@@ -190,11 +190,20 @@ final class OnboardingLockTests: XCTestCase {
         authenticator: BiometricAuthenticating,
         defaults: UserDefaults
     ) -> SettingsViewModel {
-        SettingsViewModel(
+        let center = FakeNotificationScheduler()
+        let scheduler = NightReminderScheduler(
+            center: center,
+            repository: FakeDiaryRepository(),
+            entitlement: nil,
+            counter: nil,
+            defaults: defaults
+        )
+        return SettingsViewModel(
             repository: FakeDiaryRepository(),
             audioService: AudioRecordingService(),
             freeSkyCounter: FreeSkyCounter(store: InMemoryFreeSkyCountStore()),
             purchaseController: PurchaseController(service: FakePurchaseService()),
+            reminderController: NightReminderController(scheduler: scheduler, center: center, defaults: defaults),
             authenticator: authenticator,
             defaults: defaults
         )

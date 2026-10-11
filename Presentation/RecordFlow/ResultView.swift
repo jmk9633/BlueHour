@@ -11,6 +11,10 @@ struct ResultView: View {
     let analysis: SkyAnalysis
     /// 30번째 무료 하늘일 때 한 번 보여주는 안내. (PL-OBQXIP)
     var showFreeLimitNotice: Bool = false
+    /// 첫 기록일 때 한 번 보여주는 밤 리마인더 제안. (F-LDUDEX)
+    var showReminderPrompt: Bool = false
+    var onAcceptReminder: () -> Void = {}
+    var onDeclineReminder: () -> Void = {}
     let onClose: () -> Void
 
     var body: some View {
@@ -68,6 +72,10 @@ struct ResultView: View {
                         .foregroundStyle(Color.bhTextSecondary)
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: .infinity)
+                }
+
+                if showReminderPrompt {
+                    ReminderPromptView(onAccept: onAcceptReminder, onDecline: onDeclineReminder)
                 }
 
                 Button("오늘은 여기까지") { onClose() }

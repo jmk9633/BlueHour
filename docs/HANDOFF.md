@@ -125,8 +125,49 @@
 
 ---
 
+## 7단계 — 밤 리마인더 알림 ✅ 완료 (커밋됨)
+
+관련 기획: F-LDUDEX(밤 리마인더), PL-OZYYZI(정책). 연동: F-FJEWRI/F-LLFPXL(첫 기록 제안 위치), F-XUQOXA(무료 30개), PL-SSBBVZ(새벽 4시 경계).
+상태: 빌드 성공, 전체 테스트 77개 통과(7단계 신규 17개 포함).
+
+### 예약 방식 (PL-OZYYZI)
+- **개별 예약**: 매일 반복 알림이 아니라 앞으로 **7일 치를 하루에 하나씩** 개별 예약(`NightReminderScheduler`, `maxScheduled = 7`).
+- **재예약 함수 하나**(`reschedule()`): 기존 리마인더 예약을 **모두 취소**한 뒤, 기록이 없는 논리 날짜에만 새로 예약. 식별자는 논리 날짜 기준 `night-reminder-yyyy-MM-dd`(날짜별 취소 가능).
+- **재예약 시점**: 앱 실행·포그라운드 복귀(`MainTabView.refreshFromSystem`), 오늘 기록 저장·삭제·다시 말하기(`RecordFlowViewModel.save`, `SkyDetailViewModel.deleteEntry`, 전체 삭제), 리마인더 켜기·끄기·시간 변경(`NightReminderController`), 구매 완료(`PurchaseController.onUnlock` → reschedule).
+- **문구 3종**(PL-OZYYZI display 그대로)을 논리 날짜에 따라 번갈아 사용. **제목은 비우고 body에만** 넣어 iOS가 헤더에 앱 이름을 표시(기획에 없는 제목 문구를 짓지 않음). 배지 미사용, 권한은 `[.alert, .sound]`만.
+
+### 날짜 규칙 (PL-SSBBVZ 재사용)
+- `BlueHourCalendar`(새벽 4시 경계) 재사용. 알림 시각 ≥4시면 그 논리 날짜 당일, **0:00~3:59면 다음 캘린더 새벽**에 발송(= 전날 논리 날짜의 알림, 전날 기록 없을 때만).
+- 오늘 기록이 있으면 오늘 알림 없음. 과거 날짜 기록은 미래 방향 순회라 예약에 영향 없음. 이미 지난 시각은 예약하지 않음.
+
+### 예외
+- **무료 30개 채운 미구매자**: 예약하지 않음(토글은 켜진 채). 구매하면 다시 예약. 게이트 판단 전 `entitlement.waitUntilReady()`로 **구매 확인을 기다린 뒤** 판단(구매자 알림이 잘못 지워지지 않게).
+- **권한 꺼짐**: `provisional`·`ephemeral`은 `authorized`로 취급. `denied`/`notDetermined`면 예약 안 함. 포그라운드 복귀 시 권한이 꺼져 있으면 나 탭 토글을 **꺼진 상태로** 표시(`refreshFromSystem`).
+- **토글 켜기인데 권한 거부**: `설정에서 알림을 허용해 주세요.` + [설정 열기](`SettingsView`, `openSettingsURLString`).
+
+### 첫 기록 제안 (F-LDUDEX / F-FJEWRI / F-LLFPXL)
+- 첫 기록의 결과 카드(`ResultView`)와 '아직 그려지지 않은 하늘' 결과 화면(`UndrawnSkyResultView`)의 [오늘은 여기까지] 위에 `ReminderPromptView`로 한 번 표시. 문구 `내일 밤에도 하늘을 남길 수 있게 알려드릴까요?` + [알려주세요]/[괜찮아요].
+- 가드: `hasShownReminderPrompt` + 이미 리마인더가 켜져 있으면 표시 안 함. **제안이 표시되는 순간**(`markPromptShown`) 가드를 세워, 버튼을 누르지 않고 닫아도 다시 뜨지 않음(사용자 합의).
+- [알려주세요]일 때만 권한 요청. [괜찮아요]/거부면 다시 제안 안 함(가드가 이미 섬). 수정·다시 말하기 결과에는 제안하지 않음.
+
+### 알림 탭·표시
+- 알림을 누르면 오늘 탭으로 전환(`TabRouter.selection = 0`, `ReminderNotificationDelegate`). Face ID 잠금은 `RootView` 오버레이가 독립적으로 먼저 요구.
+- 포그라운드에서 알림 시각이 되면 배너 미표시(`willPresent` → `[]`). 앱 아이콘 배지 미사용.
+
+### 테스트 (프로토콜 + Fake)
+- `NotificationScheduling`(UNUserNotificationCenter 래퍼)와 현재 시각(`now: () -> Date`)을 주입해 `FakeNotificationScheduler`로 결정적 검증.
+- 커버: 오늘 기록 유무, 0~4시 시각 매핑, 지난 시각 제외, 7개 상한, 30개 미구매자 예약 없음→구매 후 예약, 권한 꺼짐, 토글 꺼짐, 오늘 기록 삭제 후 재예약, 과거 날짜 무영향, 재예약이 기존 예약 먼저 취소, 문구 3종 번갈아, 첫 기록 제안 1회·이미 켜짐이면 미제안·수락 시 켜짐+예약, 토글 켜기 권한거부 안내, 포그라운드 복귀 권한 꺼짐 반영.
+
+### 사용자가 직접 할 설정
+- **없음.** 로컬 알림은 Info.plist 키·capability가 필요 없다(권한은 런타임 `requestAuthorization`). `project.pbxproj` 미수정.
+
+### 7단계 신규/수정 파일
+- 신규: `Domain/Reminder/{NightReminderScheduling,NightReminderScheduler}.swift`, `Presentation/Reminder/{NightReminderController,ReminderNotificationDelegate,ReminderPromptView}.swift`, `Data/Persistence/Services/SystemNotificationScheduler.swift`, `BlueHourTests/NightReminderTests.swift`.
+- 수정: `App/{AppSettings,DIContainer}.swift`, `Presentation/Purchase/PurchaseController.swift`(onUnlock), `Presentation/MainTabView.swift`(TabRouter 바인딩·refresh), `Presentation/RecordFlow/{RecordFlowViewModel,RecordFlowView,ResultView,UndrawnSkyResultView}.swift`, `Presentation/SkyCalendar/{SkyDetailView,SkyDetailViewModel}.swift`, `Presentation/Settings/{SettingsView,SettingsViewModel}.swift`, `BlueHourTests/{Fakes,OnboardingLockTests}.swift`.
+
+---
+
 ## 남은 단계
 
-- **7단계 — 밤 리마인더**: 잠들기 전 알림. ⚠️ 확인 필요(알림 시각·권한 흐름·문구).
 - **8단계 — 내보내기 · 가져오기**: 나 탭 '데이터 내보내기' 버튼은 현재 자리만 있음(`SettingsView`, 동작 없음). ⚠️ 확인 필요(포맷·가져오기 시 카운트 처리).
 - **9단계 — 다크 모드**: 디자인 토큰(`BlueHourColors`)의 다크 매핑 미정. ⚠️ 확인 필요(토큰 매핑 규칙).

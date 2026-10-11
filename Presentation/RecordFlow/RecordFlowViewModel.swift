@@ -40,6 +40,9 @@ final class RecordFlowViewModel {
     /// 30번째 무료 하늘을 저장해 결과 카드에서 한 번 안내해야 할 때 true. (PL-OBQXIP)
     private(set) var reachedFreeLimitNotice: Bool = false
 
+    /// 첫 기록 결과 화면에서 밤 리마인더 제안을 보여줘야 할 때 true. (F-LDUDEX / F-FJEWRI)
+    private(set) var offerReminderPrompt: Bool = false
+
     // MARK: - 설정값
 
     let maxDuration: TimeInterval = 60   // 최대 60초
@@ -83,6 +86,8 @@ final class RecordFlowViewModel {
     private let entitlement: EntitlementProviding?
     /// 무료 하늘 카운트. nil이면 카운트하지 않음(테스트 등).
     private let freeSkyCounter: FreeSkyCounting?
+    /// 밤 리마인더. 저장/삭제 후 재예약과 첫 기록 제안에 쓴다. nil이면 아무 동작도 하지 않음(테스트 등).
+    private let reminder: NightReminding?
 
     // MARK: - 내부 상태
 
@@ -120,7 +125,8 @@ final class RecordFlowViewModel {
         repository: DiaryRepositoryProtocol,
         defaults: UserDefaults = .standard,
         entitlement: EntitlementProviding? = nil,
-        freeSkyCounter: FreeSkyCounting? = nil
+        freeSkyCounter: FreeSkyCounting? = nil,
+        reminder: NightReminding? = nil
     ) {
         self.targetDate = targetDate
         self.replaceExisting = replaceExisting
@@ -131,6 +137,7 @@ final class RecordFlowViewModel {
         self.defaults = defaults
         self.entitlement = entitlement
         self.freeSkyCounter = freeSkyCounter
+        self.reminder = reminder
     }
 
     // MARK: - 대상 날짜의 기존 기록 확인 (진입/복귀/저장 후 호출)
@@ -381,6 +388,7 @@ final class RecordFlowViewModel {
             let sky = try await analysisService.analyze(text: text)
             self.analysis = sky
             try await save(text: text, sky: sky)
+            evaluateReminderPrompt()
             state = .result
         } catch {
             // 분석 실패 시 처리는 흐름에 따라 다르다.
@@ -396,6 +404,7 @@ final class RecordFlowViewModel {
                 // 나중에 AI를 쓸 수 있게 되면 PendingSkyAnalyzer가 자동으로 하늘을 채운다.
                 self.analysis = nil
                 try? await save(text: text, sky: nil)
+                evaluateReminderPrompt()
                 state = .savedWithoutSky
             } else {
                 state = .failed("오늘의 하늘을 만들지 못했어요. 잠시 후 다시 시도해 주세요.")
@@ -423,6 +432,8 @@ final class RecordFlowViewModel {
             )
             try await repository.update(updated)
             recordedFileName = nil
+            // 수정은 기록 '존재'를 바꾸지 않지만, 날짜가 오늘이면 상태 반영을 위해 재예약해도 무해하다.
+            await reminder?.reschedule()
             return
         }
 
@@ -467,6 +478,32 @@ final class RecordFlowViewModel {
             freeSkyCounter?.increment()
             evaluateFreeLimitNotice()
         }
+
+        // 오늘 기록 저장(또는 '다시 말하기' 교체) 후 밤 리마인더 예약을 다시 맞춘다.
+        // (오늘 기록이 생겼으면 오늘 알림이 빠지도록)
+        await reminder?.reschedule()
+    }
+
+    // MARK: - 첫 기록 밤 리마인더 제안 (F-LDUDEX / F-FJEWRI)
+
+    /// 신규 저장(수정 아님) 결과 화면 진입 시, 아직 제안한 적 없고 리마인더가 꺼져 있으면 제안을 띄운다.
+    /// 제안을 '표시하는 순간' 가드를 세워, 버튼을 누르지 않고 닫아도 다시 뜨지 않게 한다.
+    private func evaluateReminderPrompt() {
+        guard editingEntry == nil, let reminder, reminder.shouldOfferPrompt else { return }
+        reminder.markPromptShown()
+        offerReminderPrompt = true
+    }
+
+    /// 제안의 [알려주세요]. 권한을 요청하고 허용되면 리마인더를 켠다.
+    func acceptReminderPrompt() async {
+        offerReminderPrompt = false
+        await reminder?.acceptPrompt()
+    }
+
+    /// 제안의 [괜찮아요]. 제안을 닫는다(가드는 표시 시점에 이미 세워짐).
+    func declineReminderPrompt() {
+        offerReminderPrompt = false
+        reminder?.declinePrompt()
     }
 
     /// 30번째 무료 하늘을 저장하면 결과 카드에서 한 번만 안내한다. (PL-OBQXIP)

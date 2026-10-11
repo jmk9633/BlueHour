@@ -264,6 +264,53 @@ actor FakePurchaseService: PurchaseServiceProtocol {
     nonisolated func transactionUpdates() -> AsyncStream<Void> { AsyncStream { $0.finish() } }
 }
 
+// MARK: - 알림 예약 (UNUserNotificationCenter 대역)
+
+/// 권한 상태와 예약/취소를 제어·기록해 밤 리마인더 예약 로직을 결정적으로 검증한다.
+@MainActor
+final class FakeNotificationScheduler: NotificationScheduling {
+    var status: NotificationAuthStatus
+    var requestResult: Bool
+
+    private(set) var requestCount = 0
+    /// 현재 예약돼 있는(= pending) 알림들.
+    private(set) var scheduled: [(identifier: String, body: String, components: DateComponents)] = []
+    /// removeReminders 호출마다 전달된 식별자 목록(재예약이 먼저 취소하는지 검증용).
+    private(set) var removedCalls: [[String]] = []
+
+    init(status: NotificationAuthStatus = .authorized, requestResult: Bool = true) {
+        self.status = status
+        self.requestResult = requestResult
+    }
+
+    func authorizationStatus() async -> NotificationAuthStatus { status }
+
+    func requestAuthorization() async -> Bool {
+        requestCount += 1
+        if requestResult { status = .authorized }
+        return requestResult
+    }
+
+    func pendingReminderIdentifiers() async -> [String] {
+        scheduled.map(\.identifier)
+    }
+
+    func removeReminders(identifiers: [String]) async {
+        removedCalls.append(identifiers)
+        scheduled.removeAll { identifiers.contains($0.identifier) }
+    }
+
+    func scheduleReminder(identifier: String, body: String, at components: DateComponents) async {
+        scheduled.append((identifier, body, components))
+    }
+
+    // 조회 헬퍼
+    var scheduledIdentifiers: [String] { scheduled.map(\.identifier) }
+    func hasScheduled(dateKey: String) -> Bool {
+        scheduled.contains { $0.identifier.hasSuffix(dateKey) }
+    }
+}
+
 // MARK: - 생체/암호 인증
 
 /// 인증 가능 여부와 인증 성공 여부를 주입해 잠금 전환 로직을 결정적으로 검증한다.

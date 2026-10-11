@@ -14,7 +14,15 @@ import Observation
 final class PurchaseController: EntitlementProviding {
 
     /// 평생 이용권을 보유 중인지.
-    private(set) var isUnlocked = false
+    private(set) var isUnlocked = false {
+        didSet {
+            // 잠금 해제로 '막' 바뀐 순간에만 알린다(구매 완료 시 밤 리마인더 재예약 트리거).
+            if isUnlocked && !oldValue { onUnlock?() }
+        }
+    }
+
+    /// 평생 이용권 보유로 전환된 순간 호출되는 콜백. (DIContainer가 밤 리마인더 재예약에 연결)
+    var onUnlock: (() -> Void)?
     /// 앱 시작 직후의 구매 여부 확인이 끝났는지.
     private(set) var isReady = false
     /// 구매 화면에 표시할 가격(Product.displayPrice). 로드 전/실패 시 nil.

@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct SettingsView: View {
     @Environment(\.di) private var di
@@ -29,7 +30,8 @@ struct SettingsView: View {
                     repository: di.diaryRepository,
                     audioService: di.audioService,
                     freeSkyCounter: di.freeSkyCounter,
-                    purchaseController: di.purchaseController
+                    purchaseController: di.purchaseController,
+                    reminderController: di.nightReminderController
                 )
             }
         }
@@ -39,6 +41,17 @@ struct SettingsView: View {
         List {
             Section("잠금") {
                 Toggle("Face ID로 잠그기", isOn: bindFaceID(viewModel))
+            }
+
+            Section("알림") {
+                Toggle("밤 리마인더", isOn: bindReminder(viewModel))
+                if viewModel.reminderController.isEnabled {
+                    DatePicker(
+                        "알림 시간",
+                        selection: bindReminderTime(viewModel),
+                        displayedComponents: .hourAndMinute
+                    )
+                }
             }
 
             Section {
@@ -131,6 +144,16 @@ struct SettingsView: View {
         } message: {
             Text("기기에 암호를 설정하면 잠금을 사용할 수 있어요.")
         }
+        .alert("설정에서 알림을 허용해 주세요.", isPresented: bindReminderPermissionAlert(viewModel)) {
+            Button("설정 열기") { openSystemSettings() }
+            Button("취소", role: .cancel) { }
+        }
+    }
+
+    /// iOS 설정 앱의 이 앱 화면을 연다.
+    private func openSystemSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
     }
 
     // MARK: - 앱 버전 (F-SAZNQX)
@@ -164,5 +187,44 @@ struct SettingsView: View {
 
     private func bindLockUnavailableAlert(_ vm: SettingsViewModel) -> Binding<Bool> {
         Binding(get: { vm.showLockUnavailableAlert }, set: { vm.showLockUnavailableAlert = $0 })
+    }
+
+    // MARK: - 밤 리마인더 바인딩 (F-LDUDEX)
+
+    /// 토글. 켜기는 권한 확인·요청을 거치므로 ViewModel에 비동기로 위임한다.
+    /// (권한 거부·불가 시 isEnabled가 false로 유지돼 토글이 되돌아온다.)
+    private func bindReminder(_ vm: SettingsViewModel) -> Binding<Bool> {
+        Binding(
+            get: { vm.reminderController.isEnabled },
+            set: { newValue in Task { await vm.reminderController.setEnabled(newValue) } }
+        )
+    }
+
+    /// 알림 시간. 시·분만 쓰고, 바뀌면 재예약한다.
+    private func bindReminderTime(_ vm: SettingsViewModel) -> Binding<Date> {
+        Binding(
+            get: {
+                let calendar = Calendar.current
+                return calendar.date(
+                    bySettingHour: vm.reminderController.reminderHour,
+                    minute: vm.reminderController.reminderMinute,
+                    second: 0,
+                    of: Date()
+                ) ?? Date()
+            },
+            set: { newDate in
+                let comps = Calendar.current.dateComponents([.hour, .minute], from: newDate)
+                let hour = comps.hour ?? 22
+                let minute = comps.minute ?? 30
+                Task { await vm.reminderController.setTime(hour: hour, minute: minute) }
+            }
+        )
+    }
+
+    private func bindReminderPermissionAlert(_ vm: SettingsViewModel) -> Binding<Bool> {
+        Binding(
+            get: { vm.reminderController.showPermissionDeniedNotice },
+            set: { vm.reminderController.showPermissionDeniedNotice = $0 }
+        )
     }
 }

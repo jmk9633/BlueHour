@@ -34,12 +34,14 @@ final class SettingsViewModel {
     private let defaults: UserDefaults
     private let freeSkyCounter: FreeSkyCounter
     let purchaseController: PurchaseController
+    let reminderController: NightReminderController
 
     init(
         repository: DiaryRepositoryProtocol,
         audioService: AudioRecordingService,
         freeSkyCounter: FreeSkyCounter,
         purchaseController: PurchaseController,
+        reminderController: NightReminderController,
         authenticator: BiometricAuthenticating = BiometricAuthenticator(),
         defaults: UserDefaults = .standard
     ) {
@@ -47,6 +49,7 @@ final class SettingsViewModel {
         self.audioService = audioService
         self.freeSkyCounter = freeSkyCounter
         self.purchaseController = purchaseController
+        self.reminderController = reminderController
         self.authenticator = authenticator
         self.defaults = defaults
         // 기본값은 AppSettings.registerDefaults로 등록된다 (saveOriginalAudio = true).
@@ -110,5 +113,7 @@ final class SettingsViewModel {
         try? await repository.deleteAll()
         // SwiftData 기록과 함께 Documents/Recordings의 음성 파일도 모두 삭제한다.
         try? await audioService.deleteAllRecordings()
+        // 기록이 모두 사라졌으므로 밤 리마인더 예약을 다시 맞춘다.
+        await reminderController.reschedule()
     }
 }

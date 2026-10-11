@@ -19,6 +19,14 @@ enum AppSettings {
         static let hasCompletedOnboarding = "settings.hasCompletedOnboarding"
         /// 무료 한도(30번째 하늘) 안내를 결과 카드에서 이미 한 번 보여줬는지 여부
         static let hasShownFreeLimitNotice = "settings.hasShownFreeLimitNotice"
+        /// 밤 리마인더 알림 켜짐 여부 (F-LDUDEX)
+        static let reminderEnabled = "settings.reminderEnabled"
+        /// 밤 리마인더 알림 시각 (시). 기본 22시
+        static let reminderHour = "settings.reminderHour"
+        /// 밤 리마인더 알림 시각 (분). 기본 30분 → 기본 22:30
+        static let reminderMinute = "settings.reminderMinute"
+        /// 첫 기록 결과 화면에서 밤 리마인더 제안을 이미 한 번 표시했는지 여부
+        static let hasShownReminderPrompt = "settings.hasShownReminderPrompt"
     }
 
     /// 앱 시작 시 한 번 호출해 기본값을 등록한다.
@@ -29,7 +37,11 @@ enum AppSettings {
             Keys.saveOriginalAudio: true,
             Keys.useFaceIDLock: false,
             Keys.hasCompletedOnboarding: false,
-            Keys.hasShownFreeLimitNotice: false
+            Keys.hasShownFreeLimitNotice: false,
+            Keys.reminderEnabled: false,
+            Keys.reminderHour: 22,
+            Keys.reminderMinute: 30,
+            Keys.hasShownReminderPrompt: false
         ])
     }
 }

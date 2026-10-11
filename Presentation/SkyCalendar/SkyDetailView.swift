@@ -47,7 +47,8 @@ struct SkyDetailView: View {
                 viewModel = SkyDetailViewModel(
                     entry: initialEntry,
                     repository: di.diaryRepository,
-                    audioService: di.audioService
+                    audioService: di.audioService,
+                    reminder: di.nightReminderController
                 )
             }
             await resolveVoice()

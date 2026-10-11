@@ -54,7 +54,8 @@ struct RecordFlowView: View {
                     analysisService: di.analysisService,
                     repository: di.diaryRepository,
                     entitlement: di.purchaseController,
-                    freeSkyCounter: di.freeSkyCounter
+                    freeSkyCounter: di.freeSkyCounter,
+                    reminder: di.nightReminderController
                 )
                 // 수정 진입이면 녹음을 건너뛰고 기존 텍스트를 채운 리뷰 화면으로 시작
                 if let editingEntry {
@@ -131,7 +132,13 @@ struct RecordFlowView: View {
             ReviewView(viewModel: viewModel)
         case .result:
             if let analysis = viewModel.analysis {
-                ResultView(analysis: analysis, showFreeLimitNotice: viewModel.reachedFreeLimitNotice) {
+                ResultView(
+                    analysis: analysis,
+                    showFreeLimitNotice: viewModel.reachedFreeLimitNotice,
+                    showReminderPrompt: viewModel.offerReminderPrompt,
+                    onAcceptReminder: { Task { await viewModel.acceptReminderPrompt() } },
+                    onDeclineReminder: { viewModel.declineReminderPrompt() }
+                ) {
                     // 시트(캘린더)로 진입했으면 닫기, 오늘 탭이면 처음으로 되돌림
                     if let onFinish {
                         onFinish()
@@ -141,7 +148,12 @@ struct RecordFlowView: View {
                 }
             }
         case .savedWithoutSky:
-            UndrawnSkyResultView(showFreeLimitNotice: viewModel.reachedFreeLimitNotice) {
+            UndrawnSkyResultView(
+                showFreeLimitNotice: viewModel.reachedFreeLimitNotice,
+                showReminderPrompt: viewModel.offerReminderPrompt,
+                onAcceptReminder: { Task { await viewModel.acceptReminderPrompt() } },
+                onDeclineReminder: { viewModel.declineReminderPrompt() }
+            ) {
                 // 결과 카드와 동일한 닫기 동작 (시트면 닫기, 오늘 탭이면 처음으로)
                 if let onFinish {
                     onFinish()
