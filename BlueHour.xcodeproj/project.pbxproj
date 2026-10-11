@@ -17,6 +17,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		804BDB41307BAE4800C92C69 /* BlueHour.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = BlueHour.storekit; sourceTree = "<group>"; };
 		80972A1C3076A61D004A366B /* BlueHourTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BlueHourTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F98843972FD1A56500C0429D /* BlueHour.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BlueHour.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -80,6 +81,7 @@
 		F988438E2FD1A56500C0429D = {
 			isa = PBXGroup;
 			children = (
+				804BDB41307BAE4800C92C69 /* BlueHour.storekit */,
 				F98844002FD2BD7A00C0429D /* Resources */,
 				F98843AE2FD1A5D900C0429D /* Presentation */,
 				F98843AA2FD1A5B000C0429D /* Data */,
