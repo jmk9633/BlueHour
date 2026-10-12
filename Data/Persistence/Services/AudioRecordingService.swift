@@ -16,14 +16,19 @@ actor AudioRecordingService: AudioRecordingServiceProtocol {
     // 음성 파일을 저장할 폴더 (앱 전용 Documents/Recordings)
     private let recordingsDirectory: URL
 
-    init() {
-        let documents = FileManager.default.urls(
-            for: .documentDirectory,
-            in: .userDomainMask
-        )[0]
-        self.recordingsDirectory = documents.appendingPathComponent("Recordings", isDirectory: true)
+    /// 저장 폴더를 바꿔 끼울 수 있게 한다(테스트는 임시 폴더를 쓴다). 기본값은 Documents/Recordings.
+    init(recordingsDirectory: URL? = nil) {
+        if let recordingsDirectory {
+            self.recordingsDirectory = recordingsDirectory
+        } else {
+            let documents = FileManager.default.urls(
+                for: .documentDirectory,
+                in: .userDomainMask
+            )[0]
+            self.recordingsDirectory = documents.appendingPathComponent("Recordings", isDirectory: true)
+        }
         try? FileManager.default.createDirectory(
-            at: recordingsDirectory,
+            at: self.recordingsDirectory,
             withIntermediateDirectories: true
         )
     }
@@ -151,5 +156,51 @@ actor AudioRecordingService: AudioRecordingServiceProtocol {
     /// 파일명으로 전체 경로 반환 (음성→글자 변환 일꾼이 사용)
     func fileURL(for fileName: String) -> URL {
         recordingsDirectory.appendingPathComponent(fileName)
+    }
+}
+
+// MARK: - RecordingFileStoring (내보내기/가져오기용 파일 조작)
+
+extension AudioRecordingService: RecordingFileStoring {
+
+    /// 외부 파일을 Recordings 폴더로 새 UUID 이름으로 복사한다. (가져온 음성은 새 이름으로 보관)
+    func copyIntoRecordings(from sourceURL: URL) async throws -> String {
+        let fileName = "\(UUID().uuidString).m4a"
+        let destination = recordingsDirectory.appendingPathComponent(fileName)
+        try FileManager.default.copyItem(at: sourceURL, to: destination)
+        return fileName
+    }
+
+    /// Recordings의 파일을 임시 보관 폴더로 옮긴다. 파일이 없으면 nil.
+    func moveOutOfRecordings(fileName: String, to directory: URL) async throws -> URL? {
+        let source = recordingsDirectory.appendingPathComponent(fileName)
+        guard FileManager.default.fileExists(atPath: source.path) else { return nil }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let destination = directory.appendingPathComponent(fileName)
+        if FileManager.default.fileExists(atPath: destination.path) {
+            try FileManager.default.removeItem(at: destination)
+        }
+        try FileManager.default.moveItem(at: source, to: destination)
+        return destination
+    }
+
+    /// 임시 보관 폴더의 파일을 원래 파일명으로 Recordings에 되돌린다.
+    func restoreIntoRecordings(from url: URL, fileName: String) async throws {
+        let destination = recordingsDirectory.appendingPathComponent(fileName)
+        if FileManager.default.fileExists(atPath: destination.path) {
+            try FileManager.default.removeItem(at: destination)
+        }
+        try FileManager.default.moveItem(at: url, to: destination)
+    }
+
+    /// Recordings의 파일을 삭제한다.
+    func deleteFromRecordings(fileName: String) async throws {
+        try deleteFile(fileName: fileName)
+    }
+
+    /// Recordings에 해당 파일이 있는지.
+    func fileExists(fileName: String) async -> Bool {
+        let url = recordingsDirectory.appendingPathComponent(fileName)
+        return FileManager.default.fileExists(atPath: url.path)
     }
 }

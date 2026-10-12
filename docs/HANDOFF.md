@@ -167,7 +167,42 @@
 
 ---
 
+## 8단계 — 데이터 내보내기 · 기록 가져오기 ✅ 완료 (커밋됨)
+
+관련 기획: F-NJSTGI(내보내기), F-XXQNPA(가져오기), PL-VKUOBL(저장·프라이버시). 연동: F-XUQOXA(카운트 제외), S-EMLDBO(자동 분석), F-LDUDEX(가져온 뒤 재예약), F-JJFVFE(가져온 음성은 설정 무관 보관).
+상태: 빌드 성공, 전체 테스트 87개 통과(8단계 신규 10개 포함). **ZIPFoundation 0.9.20** 사용.
+
+### 교환 포맷 (`Domain/DataTransfer/BlueHourExportFormat.swift`)
+- ZIP = `bluehour.json`(복원용) + `블루아워_기록.txt`(읽기용) + `recordings/*.m4a`. 파일명 `블루아워_{yyyy-MM-dd}.zip`.
+- `bluehour.json` 최상위: `formatVersion`(현재 **1**), `appVersion`, `exportedAt`, `entries`. 날짜는 ISO8601.
+- 기록마다 date·createdAt·updatedAt·originalText·editedText·languageCode·confidence·analysis(없으면 `null`)·audioFileName/·audioDuration/·audioCreatedAt. weatherType 포함 분석 전체를 담아 **재분석 없이 복원**.
+- 읽기 텍스트: 날짜순 날씨이름·제목·요약·원문. 그려지지 않은 하늘은 '아직 그려지지 않은 하늘' + 원문만.
+
+### 내보내기 (`DataExportService` + `DataTransferController`)
+- 나 탭 '데이터' ▸ [데이터 내보내기]. **기록 0개면 버튼 비활성화**(문구를 새로 짓지 않기로 사용자 합의).
+- '목소리도 함께 담기'는 **목소리 남은 기록이 있을 때만** 시트로 노출(기본 켜짐). 없으면 시트 없이 바로 내보냄.
+- ZIP 생성은 `Task.detached`(메인 스레드 비차단). 공유 시트(`ShareSheet`)가 닫히면 임시 ZIP 정리(`cleanupExportFile`).
+
+### 가져오기 (`DataImporter` + `DataTransferController`)
+- 파일 선택기(`.zip`) → 임시 폴더 해제 → `bluehour.json` **전체 검증 후** 저장. 모르는 formatVersion·형식오류(알 수 없는 weatherType 포함)·손상 → `'이 파일은 가져올 수 없어요.'`, 아무것도 안 바꿈.
+- 겹치는 날짜는 **총 일수만** 표시하고 한 번만 질문: `'총 N일의 하늘이 이미 있어요. 가져온 기록으로 바꿀까요?'` / [바꾸기]·[기존 하늘 유지]. [유지]는 겹치는 날 건너뜀, 안 겹치는 날은 모두 가져옴.
+- **[바꾸기] 저장 순서(사용자 지정, 같은 날짜 기록 2개 공존 금지)**: ① 교체될 기존 기록을 메모리 백업 + 음성을 임시 보관 폴더로 **이동** 후 기존 기록 삭제 → ② 가져온 기록 추가(음성은 새 UUID 복사) → 실패 시 추가분·복사음성 삭제하고 백업한 기록·음성 **원복** → 성공 시 임시 보관 폴더 삭제.
+- 음성은 새 UUID로 복사. JSON에 파일명 있어도 ZIP에 파일 없으면 목소리 없는 기록. 가져온 음성은 저장 방식 설정과 무관하게 보관.
+- **무료 카운트 미증가**(컨트롤러가 카운터에 의존하지 않음) — 30개 채운 미구매자도 가능. 완료 후 `pendingAnalyzer.run()`·`reminderController.reschedule()`. 달력은 탭 복귀 시 `onAppear`로 자동 새로고침.
+- 임시 해제 폴더는 성공·실패와 무관하게 `importer.cleanup`으로 정리.
+
+### 파일 조작 추상화
+- `Domain/Services/RecordingFileStoring.swift`: fileURL/copyIntoRecordings/moveOutOfRecordings/restoreIntoRecordings/deleteFromRecordings/fileExists. `AudioRecordingService`가 conform하며, **저장 폴더 주입 가능**(`init(recordingsDirectory:)`)으로 테스트는 임시 폴더 사용.
+
+### 사용자가 직접 할 설정
+- ⚠️ **ZIPFoundation 패키지 추가 + `BlueHour` 타깃에 라이브러리 링크**(General ▸ Frameworks, Libraries, and Embedded Content). URL `https://github.com/weichsel/ZIPFoundation`, Up to Next Major 0.9.0. `project.pbxproj`는 Xcode가 처리(직접 수정 안 함).
+
+### 8단계 신규/수정 파일
+- 신규: `Domain/DataTransfer/{BlueHourExportFormat,DataExportService,DataImporter}.swift`, `Domain/Services/RecordingFileStoring.swift`, `Presentation/Settings/{DataTransferController,DataTransferViews}.swift`, `BlueHourTests/DataTransferTests.swift`.
+- 수정: `Data/Persistence/Services/AudioRecordingService.swift`(폴더 주입·RecordingFileStoring), `Presentation/Settings/SettingsView.swift`(데이터 섹션 연결).
+
+---
+
 ## 남은 단계
 
-- **8단계 — 내보내기 · 가져오기**: 나 탭 '데이터 내보내기' 버튼은 현재 자리만 있음(`SettingsView`, 동작 없음). ⚠️ 확인 필요(포맷·가져오기 시 카운트 처리).
 - **9단계 — 다크 모드**: 디자인 토큰(`BlueHourColors`)의 다크 매핑 미정. ⚠️ 확인 필요(토큰 매핑 규칙).

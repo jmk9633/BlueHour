@@ -14,6 +14,18 @@ struct SettingsView: View {
     @State private var showPurchase = false
     @State private var restoreMessage: String?
 
+    // MARK: - 데이터 내보내기 · 가져오기 (8단계)
+    @State private var dataTransfer: DataTransferController?
+    @State private var showExportOptions = false
+    @State private var showImportPicker = false
+    @State private var shareItem: ShareItem?
+
+    /// 공유 시트에 넘길 ZIP 경로(Identifiable 래퍼).
+    private struct ShareItem: Identifiable {
+        let id = UUID()
+        let url: URL
+    }
+
     var body: some View {
         ZStack {
             Color.bhBackground.ignoresSafeArea()
@@ -33,6 +45,17 @@ struct SettingsView: View {
                     purchaseController: di.purchaseController,
                     reminderController: di.nightReminderController
                 )
+            }
+            if dataTransfer == nil {
+                dataTransfer = DataTransferController(
+                    repository: di.diaryRepository,
+                    fileStore: di.audioService,
+                    pendingAnalyzer: di.pendingAnalyzer,
+                    reminderController: di.nightReminderController
+                )
+            }
+            if let dataTransfer {
+                Task { await dataTransfer.refreshExportAvailability() }
             }
         }
     }
@@ -69,7 +92,19 @@ struct SettingsView: View {
 
             Section("데이터") {
                 Button("데이터 내보내기") {
-                    // 내보내기는 6단계 이후 확장 지점
+                    guard let dataTransfer else { return }
+                    // 목소리 남은 기록이 있으면 '함께 담기'를 고르는 시트를, 없으면 바로 내보낸다.
+                    if dataTransfer.hasAnyVoice {
+                        showExportOptions = true
+                    } else {
+                        runExport(dataTransfer)
+                    }
+                }
+                .foregroundStyle(Color.bhTextPrimary)
+                .disabled(!(dataTransfer?.canExport ?? false))
+
+                Button("기록 가져오기") {
+                    showImportPicker = true
                 }
                 .foregroundStyle(Color.bhTextPrimary)
 
@@ -148,6 +183,53 @@ struct SettingsView: View {
             Button("설정 열기") { openSystemSettings() }
             Button("취소", role: .cancel) { }
         }
+        // MARK: - 데이터 내보내기 · 가져오기 (8단계)
+        .sheet(isPresented: $showExportOptions) {
+            if let dataTransfer {
+                ExportOptionsSheet(controller: dataTransfer) {
+                    showExportOptions = false
+                    runExport(dataTransfer)
+                }
+            }
+        }
+        .sheet(item: $shareItem) { item in
+            ShareSheet(fileURL: item.url) {
+                dataTransfer?.cleanupExportFile(item.url)
+                shareItem = nil
+            }
+        }
+        .sheet(isPresented: $showImportPicker) {
+            DocumentPickerView { url in
+                showImportPicker = false
+                guard let dataTransfer else { return }
+                Task { await dataTransfer.beginImport(from: url) }
+            }
+        }
+        .alert(overlapAlertTitle, isPresented: bindOverlapAlert()) {
+            Button("바꾸기") { Task { await dataTransfer?.resolveOverlap(overwrite: true) } }
+            Button("기존 하늘 유지", role: .cancel) {
+                Task { await dataTransfer?.resolveOverlap(overwrite: false) }
+            }
+        }
+        .alert("가져오기", isPresented: bindResultAlert()) {
+            Button("확인", role: .cancel) { dataTransfer?.resultMessage = nil }
+        } message: {
+            Text(dataTransfer?.resultMessage ?? "")
+        }
+    }
+
+    /// 겹치는 날짜 확인 문구. 겹치는 날짜는 특정 날짜를 보여주지 않고 총 일수만 쓴다.
+    private var overlapAlertTitle: String {
+        "총 \(dataTransfer?.overlapPromptCount ?? 0)일의 하늘이 이미 있어요. 가져온 기록으로 바꿀까요?"
+    }
+
+    /// 내보내기 ZIP을 만들어 공유 시트를 띄운다.
+    private func runExport(_ controller: DataTransferController) {
+        Task {
+            if let url = await controller.makeExportFile() {
+                shareItem = ShareItem(url: url)
+            }
+        }
     }
 
     /// iOS 설정 앱의 이 앱 화면을 연다.
@@ -167,6 +249,20 @@ struct SettingsView: View {
 
     private func bindRestoreAlert() -> Binding<Bool> {
         Binding(get: { restoreMessage != nil }, set: { if !$0 { restoreMessage = nil } })
+    }
+
+    private func bindOverlapAlert() -> Binding<Bool> {
+        Binding(
+            get: { dataTransfer?.overlapPromptCount != nil },
+            set: { if !$0 { dataTransfer?.overlapPromptCount = nil } }
+        )
+    }
+
+    private func bindResultAlert() -> Binding<Bool> {
+        Binding(
+            get: { dataTransfer?.resultMessage != nil },
+            set: { if !$0 { dataTransfer?.resultMessage = nil } }
+        )
     }
 
     private func bindFaceID(_ vm: SettingsViewModel) -> Binding<Bool> {
