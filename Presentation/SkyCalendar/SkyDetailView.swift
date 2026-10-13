@@ -131,7 +131,7 @@ struct SkyDetailView: View {
                                     .font(.bhCaption)
                                     .padding(.horizontal, BHMetrics.spacingM)
                                     .padding(.vertical, BHMetrics.spacingS)
-                                    .background(Capsule().fill(Color.bhMistBlue.opacity(0.3)))
+                                    .background(Capsule().fill(Color.bhSurface))
                                     .foregroundStyle(Color.bhTextPrimary)
                             }
                         }
@@ -201,7 +201,7 @@ struct SkyDetailView: View {
                     GeometryReader { geo in
                         ZStack(alignment: .leading) {
                             Capsule()
-                                .fill(Color.bhCloudGray.opacity(0.4))
+                                .fill(Color.bhSurface)
                                 .frame(height: 4)
                             Capsule()
                                 .fill(Color.bhAccent)
@@ -224,7 +224,7 @@ struct SkyDetailView: View {
         .padding(BHMetrics.spacingL)
         .background(
             RoundedRectangle(cornerRadius: BHMetrics.cornerM, style: .continuous)
-                .fill(Color.bhMistBlue.opacity(0.2))
+                .fill(Color.bhSurface)
         )
     }
 

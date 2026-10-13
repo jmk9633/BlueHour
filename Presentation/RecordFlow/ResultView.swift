@@ -21,23 +21,25 @@ struct ResultView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: BHMetrics.spacingL) {
 
-                // 하늘 카드
+                // 하늘 카드 — 날씨별 글자색은 화면 모드와 무관하게 고정 (F-QMDQQQ)
                 VStack(alignment: .leading, spacing: BHMetrics.spacingM) {
                     Text(analysis.weatherType.displayName)
                         .font(.bhLabel)
-                        .foregroundStyle(Color.bhTextSecondary)
+                        .foregroundStyle(analysis.weatherType.cardTextColor)
 
                     Text(analysis.title)
                         .font(.bhTitle)
-                        .foregroundStyle(Color.bhTextPrimary)
+                        .foregroundStyle(analysis.weatherType.cardTextColor)
 
                     Text(analysis.summary)
                         .font(.bhBody)
-                        .foregroundStyle(Color.bhTextPrimary)
+                        .foregroundStyle(analysis.weatherType.cardTextColor)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(BHMetrics.spacingL)
+                // 글자 뒤 보호 스크림(필요한 날씨만). 테두리 없이 가장자리가 흐려진다.
+                .background(CardTextScrim(weatherType: analysis.weatherType))
                 .background(SkyCardBackground(weatherType: analysis.weatherType))
                 .clipShape(RoundedRectangle(cornerRadius: BHMetrics.cornerL, style: .continuous))
 
@@ -91,11 +93,11 @@ struct ResultView: View {
             ForEach(analysis.emotionKeywords, id: \.self) { keyword in
                 Text(keyword)
                     .font(.bhLabel)
-                    .foregroundStyle(Color.bhBlueHourNavy)
+                    .foregroundStyle(Color.bhTextPrimary)
                     .padding(.horizontal, BHMetrics.spacingM)
                     .padding(.vertical, BHMetrics.spacingS)
                     .background(
-                        Capsule().fill(Color.bhMistBlue.opacity(0.5))
+                        Capsule().fill(Color.bhSurface)
                     )
             }
         }
@@ -121,13 +123,20 @@ private struct SkyCardBackground: View {
 
     // '동작 줄이기'가 켜져 있으면 모션 없이 그라데이션만 보여준다.
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    // 다크 모드에서는 색 조합을 그대로 두고 검정 10% 덮개로 밝기만 낮춘다. (F-QMDQQQ)
+    @Environment(\.colorScheme) private var colorScheme
     @State private var animate = false
 
     var body: some View {
         ZStack {
+            // 투명도 있는 그라데이션 색이 화면 배경과 섞이지 않도록 Warm Ivory 바탕을 먼저 깐다.
+            Color.bhWarmIvory
             weatherType.cardGradient
             if !reduceMotion {
                 motionLayer
+            }
+            if colorScheme == .dark {
+                Color.black.opacity(0.10)
             }
         }
     }
@@ -185,5 +194,22 @@ private struct SkyCardBackground: View {
         }
         .rotationEffect(.degrees(12))
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+// MARK: - 카드 글자 뒤 보호 스크림 (F-QMDQQQ)
+
+/// 제목·요약·라벨이 놓인 영역 뒤에 깔아 글자 대비를 확보한다.
+/// 상자 테두리 없이 가장자리가 흐려지는 형태. 스크림이 없는 날씨면 아무것도 그리지 않는다.
+private struct CardTextScrim: View {
+    let weatherType: SkyWeatherType
+
+    var body: some View {
+        if let scrim = weatherType.cardScrim {
+            RoundedRectangle(cornerRadius: BHMetrics.cornerL, style: .continuous)
+                .fill(scrim.color.opacity(scrim.opacity))
+                .padding(BHMetrics.spacingS)
+                .blur(radius: 20)
+        }
     }
 }

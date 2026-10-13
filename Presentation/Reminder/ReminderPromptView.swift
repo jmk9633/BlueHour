@@ -33,7 +33,7 @@ struct ReminderPromptView: View {
         .padding(BHMetrics.spacingL)
         .background(
             RoundedRectangle(cornerRadius: BHMetrics.cornerM, style: .continuous)
-                .fill(Color.bhMistBlue.opacity(0.2))
+                .fill(Color.bhSurface)
         )
     }
 }

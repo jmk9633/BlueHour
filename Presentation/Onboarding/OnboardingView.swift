@@ -145,7 +145,12 @@ struct OnboardingView: View {
             .padding(BHMetrics.spacingM)
             .background(
                 RoundedRectangle(cornerRadius: BHMetrics.cornerM, style: .continuous)
-                    .fill(Color.bhMistBlue.opacity(selected ? 0.5 : 0.25))
+                    .fill(Color.bhSurface)
+            )
+            // 선택된 행은 강조 테두리로 구분한다. (배경은 두 행 모두 bhSurface 공통)
+            .overlay(
+                RoundedRectangle(cornerRadius: BHMetrics.cornerM, style: .continuous)
+                    .strokeBorder(Color.bhAccent, lineWidth: selected ? 1.5 : 0)
             )
         }
         .buttonStyle(.plain)

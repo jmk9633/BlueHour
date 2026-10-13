@@ -12,7 +12,7 @@ struct BHPrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.bhBody.weight(.medium))
-            .foregroundStyle(Color.bhWarmIvory)
+            .foregroundStyle(Color.bhOnAccent)
             .frame(maxWidth: .infinity)
             .padding(.vertical, BHMetrics.spacingM)
             .background(Color.bhAccent)

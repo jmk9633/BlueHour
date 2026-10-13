@@ -32,7 +32,7 @@ struct ReviewView: View {
                     .padding(BHMetrics.spacingM)
                     .background(
                         RoundedRectangle(cornerRadius: BHMetrics.cornerM, style: .continuous)
-                            .fill(Color.bhMistBlue.opacity(0.3))
+                            .fill(Color.bhSurface)
                     )
                     .frame(height: 240)
                     .overlay(alignment: .topLeading) {
@@ -91,6 +91,6 @@ struct ReviewView: View {
             .padding(.vertical, BHMetrics.spacingS)
         }
         .frame(maxWidth: .infinity)
-        .background(.regularMaterial)
+        .background(Color.bhSurface)
     }
 }

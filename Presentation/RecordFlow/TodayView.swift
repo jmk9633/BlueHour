@@ -90,7 +90,7 @@ struct TodayView: View {
             .padding(BHMetrics.spacingL)
             .background(
                 RoundedRectangle(cornerRadius: BHMetrics.cornerL, style: .continuous)
-                    .fill(Color.bhMistBlue.opacity(0.3))
+                    .fill(Color.bhSurface)
             )
         }
         .buttonStyle(.plain)

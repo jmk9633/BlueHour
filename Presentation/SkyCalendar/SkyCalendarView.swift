@@ -9,6 +9,8 @@ import SwiftUI
 
 struct SkyCalendarView: View {
     @Environment(\.di) private var di
+    // 다크 모드에서 타일 밝기를 낮추는 검정 10% 덮개 판단용. (F-QMDQQQ)
+    @Environment(\.colorScheme) private var colorScheme
     @State private var viewModel: SkyCalendarViewModel?
     @State private var selectedEntry: DiaryEntry?
     @State private var recordTarget: RecordTarget?
@@ -211,7 +213,7 @@ struct SkyCalendarView: View {
                     .padding(BHMetrics.spacingL)
                     .background(
                         RoundedRectangle(cornerRadius: BHMetrics.cornerM, style: .continuous)
-                            .fill(Color.bhMistBlue.opacity(0.2))
+                            .fill(Color.bhSurface)
                     )
                 }
 
@@ -244,16 +246,16 @@ struct SkyCalendarView: View {
         // 기록은 있는데 아직 하늘이 그려지지 않은 날
         let isUndrawn = entry != nil && sky == nil
 
-        return RoundedRectangle(cornerRadius: BHMetrics.cornerS, style: .continuous)
-            .fill(tileFill(sky: sky, isUndrawn: isUndrawn))
+        return tileBackground(sky: sky)
             .aspectRatio(1, contentMode: .fit)
+            .clipShape(RoundedRectangle(cornerRadius: BHMetrics.cornerS, style: .continuous))
             // 미래 날짜는 흐리게 표시해 비활성임을 알린다
             .opacity(isFuture ? 0.35 : 1)
             .overlay {
                 // '아직 그려지지 않은 하늘'은 작은 점으로 빈 날과 구분한다
                 if isUndrawn {
                     Circle()
-                        .fill(Color.bhTextSecondary.opacity(0.5))
+                        .fill(Color.bhTextSecondary)
                         .frame(width: 5, height: 5)
                 }
             }
@@ -283,9 +285,21 @@ struct SkyCalendarView: View {
             }
     }
 
-    private func tileFill(sky: SkyAnalysis?, isUndrawn: Bool) -> Color {
-        if let sky { return sky.weatherType.tileColor }
-        if isUndrawn { return Color.bhCloudGray.opacity(0.45) }
-        return Color.bhCloudGray.opacity(0.25)
+    /// 타일 배경. 하늘이 있으면 Warm Ivory 바탕 + 날씨색(+다크 10% 덮개),
+    /// 없으면(빈 날·아직 그려지지 않은 하늘) 화면 요소이므로 bhSurface.
+    @ViewBuilder
+    private func tileBackground(sky: SkyAnalysis?) -> some View {
+        if let sky {
+            ZStack {
+                // 투명도 있는 날씨색이 화면 배경과 섞이지 않도록 Ivory 바탕을 먼저 깐다.
+                Color.bhWarmIvory
+                sky.weatherType.tileColor
+                if colorScheme == .dark {
+                    Color.black.opacity(0.10)
+                }
+            }
+        } else {
+            Color.bhSurface
+        }
     }
 }

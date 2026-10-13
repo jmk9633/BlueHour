@@ -203,6 +203,39 @@
 
 ---
 
+## 9단계 — 다크 모드 ✅ 완료 (커밋됨)
+
+관련 기획: F-JPRZPV(디자인 토큰 시스템), F-QMDQQQ(날씨별 외형), F-ESDJEP(3탭 내비게이션).
+상태: 빌드 성공, 전체 테스트 94개 통과(9단계 신규 7개 포함). **iOS 시스템 설정을 따라 전환**(앱 안에 화면 모드 설정 없음, `preferredColorScheme` 미사용).
+
+### 의미 토큰 (F-JPRZPV) — `BlueHourColors.swift` 한 파일, 동적 `UIColor{trait}`
+- 원시 팔레트 8색은 라이트·다크 **같은 값**. 신규 헬퍼 `Color(light:lightAlpha:dark:darkAlpha:)`, `UIColor(hex:alpha:)`.
+- 의미 토큰 6개(라이트 / 다크): `bhBackground` #F7F2EA / #1C2233, `bhTextPrimary` Charcoal / Ivory, `bhTextSecondary` Navy 60% / Mist 70%, `bhAccent` Navy / Mist, **신규 `bhOnAccent`** Ivory / Navy(주요 버튼 글자), **신규 `bhSurface`** Cloud 35% / Navy(카드·시트 면, `.regularMaterial` 대체).
+- **화면 요소는 의미 토큰만**, 원시 팔레트는 하늘 표현(타일·카드·모션)에만. `BHPrimaryButtonStyle` 글자색 → `bhOnAccent`. `AccentColor.colorset`에 라이트 Navy / 다크 Mist 채움(에셋 JSON 직접 수정, pbxproj 미수정).
+- 교체: 화면 요소 배경의 원시 팔레트 9곳(ResultView 키워드칩·SkyDetailView 칩/진행바/음성섹션·SkyCalendarView 안내카드/빈·미그림 타일·ReviewView 에디터+키보드툴바·TodayView·ReminderPromptView) → `bhSurface`. ResultView 키워드 글자 → `bhTextPrimary`. 모션 타원·AnalysisView 숨쉬는 원은 하늘 무드로 **유지**.
+- 온보딩 선택 행: 두 행 모두 `bhSurface`, 선택 행에 `bhAccent` 1.5pt 테두리 + 기존 checkmark(bhAccent)로 구분.
+
+### 하늘 카드·타일 (F-QMDQQQ) — `SkyWeatherType+Appearance.swift`
+- 색 조합(`tileColor`·`cardGradient`)은 불변. **합성 순서: 카드/타일 안쪽 Warm Ivory 바탕 → 그라데이션 → (다크면 검정 10% 덮개) → 글자 뒤 스크림.** Ivory 바탕으로 투명도 색이 다크 배경과 섞이지 않게 고정. 다크 덮개는 `ResultView.SkyCardBackground`·`SkyCalendarView.tileBackground`에서 `colorScheme == .dark`일 때.
+- **카드 글자색은 날씨별 고정**(화면 모드 무관): Ivory=맑은 밤·소나기·고요한 밤하늘, Charcoal=나머지 7종. 의미 토큰 안 쓰고 `cardTextColor`로.
+- **글자 뒤 보호 스크림**(`CardTextScrim`, 테두리 없이 blur로 가장자리 페더): 통과 못 하는 4종만. 색은 글자색 반대 계열(Charcoal→Warm Ivory, Ivory→Navy #2F3A56), 투명도는 라이트·다크 공통 **최소값**(맑은 밤 Navy 0.64 / 소나기 Navy 0.36 / 고요한 밤하늘 Navy 0.53 / 얇은 비 Ivory 0.23). 통과 6종(구름 조금·흐린 밤·안개·바람 부는 밤·노을·구름 사이 작은 빛)은 스크림 없음. ※ Ivory 바탕 합성으로 통과 날씨가 4→6종으로 늘어난 것을 반영.
+
+### 3탭 내비게이션 (F-ESDJEP)
+- 탭 강조색은 `bhAccent`(동적) 그대로. `MainTabView`의 `.tint(bhAccent)`와 `AccentColor` 에셋이 라이트 Navy / 다크 Mist로 자동 전환. 구조·코드 변경 없음.
+
+### 테스트 (`BlueHourTests/DesignTokenTests.swift`, XCTest)
+- 의미 토큰 6개를 `UITraitCollection(userInterfaceStyle:)` + `resolvedColor`로 라이트·다크 기대 RGBA(알파 포함) 검증.
+- 날씨 10종 `minCardTextContrast(dark:)`(Ivory 바탕 합성 → 다크 10% 덮개 → 스크림, 순수 함수)로 **라이트·다크 모두 ≥4.5:1** 검증.
+
+### 사용자가 직접 할 설정
+- **없음.** 코드 토큰·에셋 JSON만 변경(pbxproj 미수정).
+
+### 9단계 신규/수정 파일
+- 신규: `BlueHourTests/DesignTokenTests.swift`.
+- 수정: `Resources/DesignSystem/{BlueHourColors,SkyWeatherType+Appearance,BHPrimaryButtonStyle}.swift`, `Resources/Assets.xcassets/AccentColor.colorset/Contents.json`, `Presentation/RecordFlow/{ResultView,ReviewView,TodayView}.swift`, `Presentation/SkyCalendar/{SkyCalendarView,SkyDetailView}.swift`, `Presentation/Onboarding/OnboardingView.swift`, `Presentation/Reminder/ReminderPromptView.swift`.
+
+---
+
 ## 남은 단계
 
-- **9단계 — 다크 모드**: 디자인 토큰(`BlueHourColors`)의 다크 매핑 미정. ⚠️ 확인 필요(토큰 매핑 규칙).
+- (없음 — 1~9단계 완료)
