@@ -149,7 +149,7 @@ struct SkyCalendarView: View {
 
     /// 휠 피커 연도 범위: 2020년부터 올해까지 (미래 기록은 없으므로 올해까지)
     private var yearRange: [Int] {
-        let current = Calendar.current.component(.year, from: .now)
+        let current = Calendar.current.component(.year, from: BlueHourClock.now())
         return Array(2020...max(current, 2020))
     }
 

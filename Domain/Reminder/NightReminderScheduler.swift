@@ -44,7 +44,7 @@ final class NightReminderScheduler {
         entitlement: EntitlementProviding?,
         counter: FreeSkyCounting?,
         defaults: UserDefaults = .standard,
-        now: @escaping () -> Date = { Date() },
+        now: @escaping () -> Date = { BlueHourClock.now() },
         calendar: Calendar = .current
     ) {
         self.center = center

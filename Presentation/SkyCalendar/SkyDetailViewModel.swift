@@ -58,7 +58,7 @@ final class SkyDetailViewModel {
 
         var updated = entry
         updated.recording = nil
-        updated.updatedAt = .now
+        updated.updatedAt = BlueHourClock.now()
         try? await repository.update(updated)
         entry = updated
     }

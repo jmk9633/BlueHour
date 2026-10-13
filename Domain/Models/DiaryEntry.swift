@@ -18,12 +18,12 @@ struct DiaryEntry: Identifiable, Equatable, Sendable {
 
     init(
         id: UUID = UUID(),
-        date: Date = .now,
+        date: Date = BlueHourClock.now(),
         recording: VoiceRecording? = nil,
         transcript: DiaryTranscript? = nil,
         analysis: SkyAnalysis? = nil,
-        createdAt: Date = .now,
-        updatedAt: Date = .now
+        createdAt: Date = BlueHourClock.now(),
+        updatedAt: Date = BlueHourClock.now()
     ) {
         self.id = id
         self.date = date

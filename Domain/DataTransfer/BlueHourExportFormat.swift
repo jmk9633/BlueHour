@@ -35,7 +35,7 @@ enum DataTransfer {
     }
 
     /// 내보내기 ZIP 파일명: '블루아워_{yyyy-MM-dd}.zip'
-    static func exportFileName(for date: Date = .now) -> String {
+    static func exportFileName(for date: Date = BlueHourClock.now()) -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd"

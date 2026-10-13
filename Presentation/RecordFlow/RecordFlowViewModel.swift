@@ -428,7 +428,7 @@ final class RecordFlowViewModel {
                 transcript: transcript,
                 analysis: sky,
                 createdAt: editing.createdAt,
-                updatedAt: .now
+                updatedAt: BlueHourClock.now()
             )
             try await repository.update(updated)
             recordedFileName = nil

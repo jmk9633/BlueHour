@@ -13,6 +13,9 @@ struct SettingsView: View {
     @State private var viewModel: SettingsViewModel?
     @State private var showPurchase = false
     @State private var restoreMessage: String?
+    #if DEBUG
+    @State private var showDebugMenu = false
+    #endif
 
     // MARK: - 데이터 내보내기 · 가져오기 (8단계)
     @State private var dataTransfer: DataTransferController?
@@ -149,6 +152,25 @@ struct SettingsView: View {
                         .foregroundStyle(Color.bhTextSecondary)
                 }
             }
+
+            #if DEBUG
+            Section {
+                Button {
+                    showDebugMenu = true
+                } label: {
+                    HStack {
+                        Text("개발자 도구")
+                        Spacer()
+                        if DebugSettings.shared.isAnyForcingActive {
+                            Text("강제 중")
+                                .font(.caption2)
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                }
+                .foregroundStyle(Color.bhTextPrimary)
+            }
+            #endif
         }
         .scrollContentBackground(.hidden)
         .background(Color.bhBackground)
@@ -205,6 +227,11 @@ struct SettingsView: View {
                 Task { await dataTransfer.beginImport(from: url) }
             }
         }
+        #if DEBUG
+        .sheet(isPresented: $showDebugMenu) {
+            NavigationStack { DebugMenuView() }
+        }
+        #endif
         .alert(overlapAlertTitle, isPresented: bindOverlapAlert()) {
             Button("바꾸기") { Task { await dataTransfer?.resolveOverlap(overwrite: true) } }
             Button("기존 하늘 유지", role: .cancel) {

@@ -163,7 +163,7 @@ actor FoundationModelSkyGenerator: GeneratedSkyProducing {
             mainTheme: g.mainTheme.isEmpty ? nil : g.mainTheme,
             recoverySignal: g.recoverySignal.isEmpty ? nil : g.recoverySignal,
             tomorrowSentence: g.tomorrowSentence,
-            analyzedAt: .now
+            analyzedAt: BlueHourClock.now()
         )
     }
 }

@@ -15,7 +15,7 @@ final class SkyCalendarViewModel {
     // MARK: - 화면이 바라보는 상태
 
     /// 현재 보고 있는 달 (그 달의 1일)
-    private(set) var currentMonth: Date = Calendar.current.startOfDay(for: .now)
+    private(set) var currentMonth: Date = Calendar.current.startOfDay(for: BlueHourClock.now())
 
     /// 날짜 → 그날의 하늘 (분석이 있는 날만)
     private(set) var skyByDay: [Date: SkyAnalysis] = [:]

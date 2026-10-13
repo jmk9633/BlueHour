@@ -98,7 +98,7 @@ final class DataTransferController {
         let document = ExportDocument(
             formatVersion: DataTransfer.currentFormatVersion,
             appVersion: Self.appVersion,
-            exportedAt: .now,
+            exportedAt: BlueHourClock.now(),
             entries: exportEntries
         )
         return try? await exportService.makeExportFile(document: document, audioSources: audioSources)

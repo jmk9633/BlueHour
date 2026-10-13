@@ -58,7 +58,7 @@ final class PendingSkyAnalyzer {
 
             var updated = current
             updated.analysis = sky
-            updated.updatedAt = .now
+            updated.updatedAt = BlueHourClock.now()
             try? await repository.update(updated)
         }
     }

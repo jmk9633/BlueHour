@@ -236,6 +236,37 @@
 
 ---
 
+## 출시 전 테스트 1/3 — DEBUG 개발자 도구 ✅ 완료 (커밋됨)
+
+목적: 출시 전 수동 테스트용 도구. **모든 코드 `#if DEBUG`**, Release 빌드에는 들어가지 않는다(Release 빌드로 검증). 실제 기능 코드는 바꾸지 않고 프로토콜·주입 자리에 디버그 구현을 끼운다.
+상태: Debug·Release 모두 빌드 성공, 전체 테스트 103개 통과(신규 9개). 사용자가 직접 할 설정: 없음(pbxproj 미수정).
+
+### 공용 시계 (`Domain/BlueHourClock.swift`)
+- `BlueHourClock.now: () -> Date`(기본 `Date()`). '오늘/현재·작성 시각'을 뜻하는 모든 `.now`/`Date()`를 이 시계로 전환(모델 기본 인자·BlueHourCalendar·NightReminderScheduler·분석/갱신/내보내기 시각·캘린더 현재 달·연도). 표시 전용 1곳(`SettingsView` DatePicker)만 유지. Release에선 교체되지 않아 항상 실제 시각.
+
+### 진입 (`Presentation/Settings/SettingsView.swift`, `#if DEBUG`)
+- 나 탭 맨 아래 '개발자 도구' 행 → `DebugMenuView` 시트. 강제 설정이 하나라도 켜져 있으면 행 오른쪽에 '강제 중' 표시.
+
+### 도구 (`Presentation/Debug/`, 전부 `#if DEBUG`)
+- `DebugSettings`(싱글턴, `@Observable`): 강제 설정(AI 상태·AI 응답·음성 인식·시각)을 **"debug." 접두 UserDefaults 키로 저장**해 재실행에도 유지. 맨 위 '강제 설정 모두 실제로 되돌리기' 버튼.
+- `DebugSkyGenerator`(`GeneratedSkyProducing` 래퍼): AI 상태(#4: follow/available/deviceNotEligible/appleIntelligenceNotEnabled/modelNotReady)·응답(#5: follow/금지어→재생성정상/금지어양쪽/오류) 강제. `SkyAnalysisService(generator:)`에 DI에서 주입.
+- `DebugSpeechService`(`SpeechRecognitionServiceProtocol` 래퍼): #6 실제/실패/8초 타임아웃. DI에서 `speechService`(프로토콜 타입)로 주입.
+- `DebugSampleBuilder`: 샘플 생성(순수 로직) + 저장(같은 날짜 있으면 **건너뛰고 넣은/건너뛴 수 표시**, 무료 카운트 미증가). 날씨 10종=오늘 제외 어제부터 10일, 한 달 채우기=지난달 전체+이번 달 1일~어제, 그려지지 않은 하늘 3개, 목소리 1개(5초 무음 m4a `AVAudioFile`로 생성→`copyIntoRecordings`). 샘플 ZIP 5종(정상/겹침/formatVersion 99/잘린 JSON/음성 누락).
+- `DebugMenuView`: 1 무료 카운트(0/29/30·키체인 초기화) / 2 샘플 / 3 오늘 기록 생성·삭제 / 4 AI 상태 / 5 AI 응답 / 6 음성 인식 / 7 현재 시각(오버라이드) / 8 다시 보기 초기화(온보딩은 재실행 필요 안내) / 9 리마인더(1분 뒤 테스트 알림·예약 목록) / 10 샘플 ZIP 공유 / 11 전체 초기화(기록·음성·UserDefaults·키체인·알림, 재실행 안내).
+- `DebugLaunch`: 실행 인자로 같은 상태 자동 구성(프롬프트 C 대비). `BlueHourApp`에서 DIContainer 전(early: reset·freeCount·skipOnboarding·aiState·clock) / 후(late: seed·data reset) 적용.
+
+### 실행 인자 (DEBUG)
+`-debugReset`, `-debugFreeCount <n>`, `-debugSeed weather10|month|undrawn|voice`(반복 가능), `-debugAIState follow|available|deviceNotEligible|appleIntelligenceNotEnabled|modelNotReady`, `-debugSkipOnboarding`, `-debugClock <ISO8601>`.
+
+### DEBUG 전용 시임(기존 파일, 승인됨)
+- `DIContainer`: `speechService` 타입을 프로토콜로, 생성부 `#if DEBUG` 주입 분기. `FreeSkyCounter.debugSetCount`, `KeychainFreeSkyCountStore.debugDeleteStored`(`#if DEBUG`). `BlueHourApp`의 `#Preview`를 `#if DEBUG`로 감쌈(Release 최초 빌드에서 드러난 `.preview` 미가드 문제 해결).
+
+### 테스트 (`BlueHourTests/DebugToolsTests.swift`, `#if DEBUG`)
+- 샘플 개수(날씨 10·미그림 3·한 달 ≥28·오늘 제외), 저장 시 기존 날짜 건너뛰기+무료 카운트 미증가, 강제 '실제 따름' 위임(sky/speech)·강제 오류, 실행 인자 파싱(전체·빈·알 수 없는 값 무시).
+- **Release 구성 빌드 성공**으로 디버그 코드 제외 확인.
+
+---
+
 ## 남은 단계
 
-- (없음 — 1~9단계 완료)
+- 출시 전 테스트 2/3, 3/3 (예정)

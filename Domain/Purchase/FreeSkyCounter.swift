@@ -35,4 +35,12 @@ final class FreeSkyCounter: FreeSkyCounting {
         count += 1
         store.save(count)
     }
+
+    #if DEBUG
+    /// 개발자 도구 전용: 카운트를 특정 값으로 맞춘다(저장소에도 반영).
+    func debugSetCount(_ value: Int) {
+        count = value
+        store.save(value)
+    }
+    #endif
 }

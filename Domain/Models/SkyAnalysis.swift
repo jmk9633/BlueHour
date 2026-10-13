@@ -25,7 +25,7 @@ struct SkyAnalysis: Equatable, Sendable {
         mainTheme: String? = nil,
         recoverySignal: String? = nil,
         tomorrowSentence: String,
-        analyzedAt: Date = .now
+        analyzedAt: Date = BlueHourClock.now()
     ) {
         self.weatherType = weatherType
         self.title = title

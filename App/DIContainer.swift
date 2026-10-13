@@ -17,7 +17,7 @@ final class DIContainer {
     // MARK: - 서비스 (ModelContext 불필요, 앱 시작 시 바로 생성)
 
     let audioService: AudioRecordingService
-    let speechService: SpeechRecognitionService
+    let speechService: SpeechRecognitionServiceProtocol
     let analysisService: SkyAnalysisService
 
     // MARK: - 구매 · 무료 하늘 카운트 (6단계)
@@ -73,8 +73,17 @@ final class DIContainer {
         // 녹음 일꾼을 먼저 만들고, 음성 일꾼이 그것을 참조한다.
         let audio = AudioRecordingService()
         self.audioService = audio
-        self.speechService = SpeechRecognitionService(audioService: audio)
+        let realSpeech = SpeechRecognitionService(audioService: audio)
+        #if DEBUG
+        // 개발자 도구용 디버그 래퍼를 끼운다(강제 설정이 '실제 따름'이면 그대로 위임).
+        self.speechService = DebugSpeechService(wrapping: realSpeech)
+        self.analysisService = SkyAnalysisService(
+            generator: DebugSkyGenerator(wrapping: FoundationModelSkyGenerator())
+        )
+        #else
+        self.speechService = realSpeech
         self.analysisService = SkyAnalysisService()
+        #endif
 
         // 무료 카운트는 키체인에, 구매 상태는 StoreKit 2로 확인한다.
         self.freeSkyCounter = FreeSkyCounter(store: KeychainFreeSkyCountStore())

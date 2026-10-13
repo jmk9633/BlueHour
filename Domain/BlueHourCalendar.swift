@@ -29,21 +29,21 @@ enum BlueHourCalendar {
     }
 
     /// 지금 기준 "논리적 오늘"의 자정.
-    static func startOfLogicalToday(now: Date = .now, calendar: Calendar = .current) -> Date {
+    static func startOfLogicalToday(now: Date = BlueHourClock.now(), calendar: Calendar = .current) -> Date {
         startOfLogicalDay(for: now, calendar: calendar)
     }
 
     /// 주어진 날짜가 논리적 오늘에 해당하는지.
     /// 입력은 이미 "논리적 하루의 자정"으로 정규화된(또는 달력상 하루를 대표하는) 날짜로 보고,
     /// 4시간 재시프트 없이 그날의 자정을 논리적 오늘의 자정과 비교한다.
-    static func isLogicalToday(_ date: Date, now: Date = .now, calendar: Calendar = .current) -> Bool {
+    static func isLogicalToday(_ date: Date, now: Date = BlueHourClock.now(), calendar: Calendar = .current) -> Bool {
         calendar.startOfDay(for: date) == startOfLogicalToday(now: now, calendar: calendar)
     }
 
     /// 주어진 날짜(달력상의 하루)가 아직 오지 않은 미래인지.
     /// 논리적 오늘이 마지막으로 기록 가능한 날이며, 그보다 뒤면 미래로 본다.
     /// (예: 새벽 1시에는 달력상 '오늘'도 논리적으로는 내일이므로 미래로 본다)
-    static func isFuture(_ date: Date, now: Date = .now, calendar: Calendar = .current) -> Bool {
+    static func isFuture(_ date: Date, now: Date = BlueHourClock.now(), calendar: Calendar = .current) -> Bool {
         calendar.startOfDay(for: date) > startOfLogicalToday(now: now, calendar: calendar)
     }
 }

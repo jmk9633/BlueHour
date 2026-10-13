@@ -64,4 +64,17 @@ final class KeychainFreeSkyCountStore: FreeSkyCountStoring {
             SecItemAdd(addQuery as CFDictionary, nil)
         }
     }
+
+    #if DEBUG
+    /// 개발자 도구 전용: 키체인에 저장된 카운트 항목 자체를 삭제한다(초기화).
+    func debugDeleteStored() {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecAttrSynchronizable as String: false
+        ]
+        SecItemDelete(query as CFDictionary)
+    }
+    #endif
 }

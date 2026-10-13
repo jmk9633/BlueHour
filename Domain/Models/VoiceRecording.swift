@@ -17,7 +17,7 @@ struct VoiceRecording: Identifiable, Equatable, Sendable {
         id: UUID = UUID(),
         fileName: String,
         duration: TimeInterval,
-        createdAt: Date = .now
+        createdAt: Date = BlueHourClock.now()
     ) {
         self.id = id
         self.fileName = fileName

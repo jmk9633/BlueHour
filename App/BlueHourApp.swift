@@ -17,7 +17,18 @@ struct BlueHourApp: App {
     // 2. DI 관리실 (모든 일꾼을 모아둔 곳)
     @State private var container: DIContainer
 
+    #if DEBUG
+    /// 실행 인자(프롬프트 C 자동화). setup 이후 데이터 작업(late)에서 재사용한다.
+    private let launchArguments: DebugLaunchArguments
+    #endif
+
     init() {
+        #if DEBUG
+        // 기본값 등록보다 먼저 적용: -debugReset이 UserDefaults·키체인을 비운 뒤 기본값을 다시 깔도록.
+        let launchArguments = DebugLaunch.applyEarly()
+        self.launchArguments = launchArguments
+        #endif
+
         // 설정 기본값 등록 (saveOriginalAudio = true 등)
         AppSettings.registerDefaults()
 
@@ -35,13 +46,21 @@ struct BlueHourApp: App {
         WindowGroup {
             RootView()
                 .diContainer(container)              // 화면 전체에 DI 주입
+                #if DEBUG
+                .task {
+                    // 데이터 초기화·샘플 주입은 ModelContext 연결 이후에.
+                    await DebugLaunch.applyLate(launchArguments, di: container)
+                }
+                #endif
         }
         .modelContainer(modelContainer)              // SwiftData 주입
     }
 }
 
 
+#if DEBUG
 #Preview {
     ResultView(analysis: .preview) { }
 }
+#endif
 //
