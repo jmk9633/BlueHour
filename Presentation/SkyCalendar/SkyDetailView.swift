@@ -195,6 +195,7 @@ struct SkyDetailView: View {
                         .font(.system(size: 36))
                         .foregroundStyle(Color.bhAccent)
                 }
+                .accessibilityLabel(playback.isPlaying ? "일시정지" : "재생")
 
                 VStack(alignment: .leading, spacing: BHMetrics.spacingXS) {
                     // 진행 막대
@@ -256,6 +257,7 @@ struct SkyDetailView: View {
                 } label: {
                     Image(systemName: "ellipsis")
                 }
+                .accessibilityLabel("더보기")
 
                 Button {
                     playback.stop()
@@ -263,6 +265,7 @@ struct SkyDetailView: View {
                 } label: {
                     Image(systemName: "xmark")
                 }
+                .accessibilityLabel("닫기")
             }
             .foregroundStyle(Color.bhTextSecondary)
         }

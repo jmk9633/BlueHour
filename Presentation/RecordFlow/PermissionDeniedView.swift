@@ -18,11 +18,11 @@ struct PermissionDeniedView: View {
             Spacer()
 
             VStack(spacing: BHMetrics.spacingM) {
-                Text("마이크를 사용할 수 없어요.")
+                Text("마이크 권한이 필요해요.")
                     .font(.bhHeadline)
                     .foregroundStyle(Color.bhTextPrimary)
 
-                Text("목소리로 남기려면\n설정에서 마이크를 허용해 주세요.")
+                Text("설정에서 허용해 주세요.")
                     .multilineTextAlignment(.center)
                     .font(.bhCaption)
                     .foregroundStyle(Color.bhTextSecondary)

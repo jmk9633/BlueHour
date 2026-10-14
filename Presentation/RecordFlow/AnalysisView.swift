@@ -11,6 +11,8 @@ struct AnalysisView: View {
     let state: RecordFlowState
 
     @State private var breathe = false
+    /// '동작 줄이기'가 켜져 있으면 숨쉬는 모션 없이 고정된 원만 보여준다. (접근성)
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var lines: (String, String) {
         switch state {
@@ -28,9 +30,9 @@ struct AnalysisView: View {
             Circle()
                 .fill(Color.bhDuskLavender.opacity(0.4))
                 .frame(width: 120, height: 120)
-                .scaleEffect(breathe ? 1.15 : 0.9)
+                .scaleEffect(reduceMotion ? 1.0 : (breathe ? 1.15 : 0.9))
                 .animation(
-                    .easeInOut(duration: 2).repeatForever(autoreverses: true),
+                    reduceMotion ? nil : .easeInOut(duration: 2).repeatForever(autoreverses: true),
                     value: breathe
                 )
 
@@ -45,6 +47,6 @@ struct AnalysisView: View {
             Spacer()
         }
         .padding(BHMetrics.screenPadding)
-        .onAppear { breathe = true }
+        .onAppear { if !reduceMotion { breathe = true } }
     }
 }

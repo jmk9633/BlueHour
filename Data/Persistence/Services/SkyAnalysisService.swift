@@ -36,6 +36,10 @@ actor SkyAnalysisService: SkyAnalysisServiceProtocol {
         await generator.isDeviceEligible()
     }
 
+    func unavailableReason() async -> SkyUnavailableReason? {
+        await generator.unavailableReason()
+    }
+
     func analyze(text: String) async throws -> SkyAnalysis {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {

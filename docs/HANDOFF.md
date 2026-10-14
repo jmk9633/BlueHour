@@ -267,6 +267,44 @@
 
 ---
 
+## 출시 전 테스트 2/3 — 기획 대비 테스트 빈틈 점검 + 코드 감사 ✅ 완료 (커밋됨)
+
+목적: Manyfast(요구사항·기능·상세기능·정책) 대비 테스트 커버리지 점검과 문구/톤/접근성/프라이버시/안정성 코드 감사. 조사 → 승인 → 반영 순.
+상태: Debug·Release 빌드 성공, 전체 테스트 **136개 통과(신규 32개 추가)**, 실패 0.
+
+### 코드 수정 (감사 반영)
+- **AI 상태별 안내(S-MEOLWE/PL-FUVSGO)**: 하늘 없이 저장 시 사유를 가린다. `SkyUnavailableReason`(deviceNotEligible/appleIntelligenceNotEnabled/modelNotReady) 추가 → `GeneratedSkyProducing`·`SkyAnalysisServiceProtocol`에 `unavailableReason()` 추가, `FoundationModelSkyGenerator`·`SkyAnalysisService`·`DebugSkyGenerator` 구현. `RecordFlowViewModel.undrawnReason`에 기록(restart 시 초기화). `UndrawnSkyResultView(reason:)`가 문구를 가르고 **appleIntelligenceNotEnabled일 때만 [설정 열기]** 노출. 문구는 기획 display 그대로.
+- **문구 통일**: `UndrawnSkyResultView` 일반 안내 `"하늘은 준비되면 곧 그려져요."`(display와 일치). `PermissionDeniedView` → `"마이크 권한이 필요해요."` / `"설정에서 허용해 주세요."`(S-BPMSBB display).
+- **접근성 라벨 6곳**: 키보드 내리기(ReviewView), 이전 달·다음 달(SkyCalendarView), 재생/일시정지·더보기·닫기(SkyDetailView).
+- **Reduce Motion**: `AnalysisView` 숨쉬는 원이 `accessibilityReduceMotion` 켜짐이면 정지 상태(scale 1.0, 애니메이션 없음).
+- **print #if DEBUG**: `FoundationModelSkyGenerator`(2곳)·`RecordFlowViewModel`(1곳)의 `print`를 DEBUG 전용으로. (일기 텍스트는 애초에 안 찍고 사유/에러만 — 프라이버시 이상 없음)
+- **테스트 시임(소규모, 승인됨)**: `RecordFlowViewModel.init(maxDuration:)` 주입(기본 60), `SkyWeatherType(fromModelRawValue:)` 안전 변환, `SpeechRecognitionService`의 `ResumeGuard`를 internal로.
+
+### 디자인 토큰 #9 — 예외 확정(코드 변경 없음)
+- 화면 요소 **텍스트**는 모두 `.bh*` 토큰 사용 중. 남은 raw 폰트는 **전부 예외 대상**이라 그대로 둔다:
+  - SF Symbol 아이콘 크기용: `LockView`(moon.stars, system 44), `ReviewView`(키보드 아이콘, title3), `SkyDetailView`(재생 아이콘, system 36), `SkyCalendarView`(chevron, caption).
+  - 달력 타일 **날짜 숫자 9pt**(`SkyCalendarView`, `.system(size: 9)`): F-QEQKFC display에 "9pt로 작게" 명시 → 의도된 예외(큰 글자 비대응은 감수).
+
+### 추가한 테스트 (신규 32)
+- `BlueHourCalendarTests`(5): 새벽4시 경계, 정규화, 과거/미래 판정. (PL-SSBBVZ)
+- `DomainSafetyTests`(4): 알 수 없는 weatherType→partlyCloudy, 유효 10종 유지, ResumeGuard 1회성·동시호출. (F-MEASPV/F-NYZPTM)
+- `PendingSkyAnalyzerTests`(5): 날짜순 채움, AI 불가 시 미동작, 이미분석·빈글 건너뜀, 하나 실패해도 계속, 분석 중 사용자 수정 건너뜀. (S-EMLDBO)
+- `SkyCalendarViewModelTests`(4): 날씨별 일수 집계·정렬, 빈 달, 미그림 기록 entriesByDay 유지, 미래 판정. (F-QEQKFC)
+- `RecordFlowViewModelTests`(+6): 하루1개 차단, 최대길이 자동정지, 멈춤/이어서 타이머, 설정 소급 미적용, AI 사유 기록 2종, UndrawnSky 문구 매핑. (F-LKCUBW/F-AAPZHA/S-KFMZEY/F-JJFVFE/S-MEOLWE)
+- `RecordManagementTests`(+2): 개별 삭제 시 음성 파일 삭제, 음성 없는 기록 삭제. (F-MDQVXP)
+- `DataTransferTests`(+2): 기록 0개 내보내기 비활성, 목소리 유무에 따른 '함께 담기' 노출. (F-NJSTGI)
+- `PurchaseCountTests`(+4): 구매 승인대기(pending)·성공, 상품 로드 실패/성공. (F-MVCMCF)
+
+### 사용자가 직접 할 설정 / 미결
+- ⚠️ **`NSFaceIDUsageDescription` 아직 없음**: 이 프로젝트는 독립 Info.plist가 없고 `GENERATE_INFOPLIST_FILE = YES`이므로, 타깃 **Build Settings → "Privacy - Face ID Usage Description"**(`INFOPLIST_KEY_NSFaceIDUsageDescription`)에 `오늘의 기록을 나만 볼 수 있도록 Face ID로 잠가요.` 입력 필요. (미입력 시 실기기 Face ID 평가에서 크래시 가능)
+- ⚠️ **약관/개인정보 링크가 임시값**(`LegalLinks.swift`, example.com) — 출시 준비 때 실제 URL로 교체.
+- 📌 **S-RTVFJX(녹음 피드백: 레벨·진행 링·마지막10초 Sunset Peach·햇틱) 미구현** — 이번 범위 제외, **다음 작업**으로 남김. (현재 RecordingView는 타이머+문구+버튼만)
+
+### 프라이버시 결론
+- `URLSession`·외부 SDK·사용 지표 전송 **없음**. 네트워크는 StoreKit 구매와 약관/개인정보 Safari 링크뿐. 알림 본문은 초대 문구 3종만(일기·날씨·감정 미노출). 음성 인식·AI 모두 온디바이스. → **수집·전송 데이터 없음**(약관 링크 교체 전제).
+
+---
+
 ## 남은 단계
 
-- 출시 전 테스트 2/3, 3/3 (예정)
+- 출시 전 테스트 3/3 (예정)

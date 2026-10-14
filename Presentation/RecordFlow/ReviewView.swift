@@ -86,6 +86,7 @@ struct ReviewView: View {
                         .font(.title3)
                         .foregroundStyle(Color.bhTextSecondary)
                 }
+                .accessibilityLabel("키보드 내리기")
             }
             .padding(.horizontal, BHMetrics.screenPadding)
             .padding(.vertical, BHMetrics.spacingS)

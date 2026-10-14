@@ -43,9 +43,13 @@ final class RecordFlowViewModel {
     /// 첫 기록 결과 화면에서 밤 리마인더 제안을 보여줘야 할 때 true. (F-LDUDEX / F-FJEWRI)
     private(set) var offerReminderPrompt: Bool = false
 
+    /// 하늘 없이 저장(savedWithoutSky)됐을 때 AI를 쓸 수 없었던 이유.
+    /// '아직 그려지지 않은 하늘' 결과 화면이 상태별 안내를 고르는 데 쓴다. (S-MEOLWE)
+    private(set) var undrawnReason: SkyUnavailableReason?
+
     // MARK: - 설정값
 
-    let maxDuration: TimeInterval = 60   // 최대 60초
+    let maxDuration: TimeInterval   // 최대 녹음 길이(기본 60초). 테스트에서 짧게 주입할 수 있다.
     let minimumDuration: TimeInterval = 3   // 3초 미만은 저장하지 않음
 
     /// 지금 녹음이 저장 가능한 최소 길이를 넘겼는지 (녹음 중 판단용).
@@ -126,10 +130,12 @@ final class RecordFlowViewModel {
         defaults: UserDefaults = .standard,
         entitlement: EntitlementProviding? = nil,
         freeSkyCounter: FreeSkyCounting? = nil,
-        reminder: NightReminding? = nil
+        reminder: NightReminding? = nil,
+        maxDuration: TimeInterval = 60
     ) {
         self.targetDate = targetDate
         self.replaceExisting = replaceExisting
+        self.maxDuration = maxDuration
         self.audioService = audioService
         self.speechService = speechService
         self.analysisService = analysisService
@@ -326,6 +332,7 @@ final class RecordFlowViewModel {
         isPaused = false
         editableText = ""
         analysis = nil
+        undrawnReason = nil
         state = .idle
         // 저장 후 결과 화면을 닫고 돌아왔을 수 있으므로, 최신 기록 상태를 다시 반영한다.
         await loadExistingEntry()
@@ -403,6 +410,8 @@ final class RecordFlowViewModel {
                 // 신규 흐름에서 AI를 쓸 수 없으면 하늘 없이 저장한다('아직 그려지지 않은 하늘').
                 // 나중에 AI를 쓸 수 있게 되면 PendingSkyAnalyzer가 자동으로 하늘을 채운다.
                 self.analysis = nil
+                // 상태별 안내(설정 열기 등)를 위해 지금 쓸 수 없는 이유를 함께 기록한다. (S-MEOLWE)
+                undrawnReason = await analysisService.unavailableReason()
                 try? await save(text: text, sky: nil)
                 evaluateReminderPrompt()
                 state = .savedWithoutSky

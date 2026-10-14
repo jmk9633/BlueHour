@@ -387,6 +387,52 @@ final class DataTransferTests: XCTestCase {
         XCTAssertEqual(all.count, 1)
         XCTAssertEqual(counter.count, 30, "가져오기는 무료 카운트를 늘리지 않는다")
     }
+
+    // MARK: - 내보내기 게이트 (F-NJSTGI)
+
+    func testExportDisabledWhenNoEntries() async {
+        let controller = DataTransferController(
+            repository: FakeDiaryRepository(seed: []),
+            fileStore: AudioRecordingService(recordingsDirectory: makeTempDir())
+        )
+        await controller.refreshExportAvailability()
+
+        XCTAssertFalse(controller.canExport, "기록이 없으면 내보내기 버튼은 비활성이어야 합니다.")
+        XCTAssertFalse(controller.hasAnyVoice)
+        let url = await controller.makeExportFile()
+        XCTAssertNil(url, "기록이 없으면 내보내기 파일을 만들지 않아야 합니다.")
+    }
+
+    func testVoiceOptionShownOnlyWhenVoiceExists() async {
+        let dir = makeTempDir()
+        let withVoice = DiaryEntry(
+            date: day(2026, 5, 1),
+            recording: writeDummyAudio("v.m4a", in: dir),
+            transcript: DiaryTranscript(originalText: "글"),
+            analysis: sampleSky()
+        )
+        let noVoice = DiaryEntry(
+            date: day(2026, 5, 2),
+            transcript: DiaryTranscript(originalText: "글"),
+            analysis: sampleSky()
+        )
+
+        let withVoiceController = DataTransferController(
+            repository: FakeDiaryRepository(seed: [withVoice]),
+            fileStore: AudioRecordingService(recordingsDirectory: dir)
+        )
+        await withVoiceController.refreshExportAvailability()
+        XCTAssertTrue(withVoiceController.canExport)
+        XCTAssertTrue(withVoiceController.hasAnyVoice, "목소리 남은 기록이 있으면 '함께 담기'를 노출해야 합니다.")
+
+        let noVoiceController = DataTransferController(
+            repository: FakeDiaryRepository(seed: [noVoice]),
+            fileStore: AudioRecordingService(recordingsDirectory: dir)
+        )
+        await noVoiceController.refreshExportAvailability()
+        XCTAssertTrue(noVoiceController.canExport)
+        XCTAssertFalse(noVoiceController.hasAnyVoice, "목소리가 없으면 '함께 담기'를 노출하지 않아야 합니다.")
+    }
 }
 
 // MARK: - 테스트용: 복사 단계에서 실패하는 파일 저장소

@@ -99,7 +99,8 @@ actor SpeechRecognitionService: SpeechRecognitionServiceProtocol {
 
 /// continuation이 두 번 호출되어 크래시 나는 걸 막는 안전장치.
 /// markIfNeeded()는 처음 호출될 때만 true를 돌려준다.
-private actor ResumeGuard {
+/// (테스트에서 접근할 수 있도록 internal로 둔다. F-NYZPTM)
+actor ResumeGuard {
     private var resumed = false
     func markIfNeeded() -> Bool {
         guard !resumed else { return false }

@@ -18,6 +18,9 @@ protocol GeneratedSkyProducing: Sendable {
     /// (첫 실행 안내 ③ '기기 미지원'을 가려내기 위한 용도)
     func isDeviceEligible() async -> Bool
 
+    /// 지금 모델을 쓸 수 없다면 그 이유. 쓸 수 있으면 nil. (S-MEOLWE 상태별 안내)
+    func unavailableReason() async -> SkyUnavailableReason?
+
     /// 일기 텍스트로부터 SkyAnalysis를 생성한다.
     /// - Parameter reinforced: 비진단 표현을 더 강하게 지시하는 instructions를 쓸지 여부(재생성 시 true).
     func produce(text: String, reinforced: Bool) async throws -> SkyAnalysis

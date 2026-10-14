@@ -149,6 +149,7 @@ struct RecordFlowView: View {
             }
         case .savedWithoutSky:
             UndrawnSkyResultView(
+                reason: viewModel.undrawnReason,
                 showFreeLimitNotice: viewModel.reachedFreeLimitNotice,
                 showReminderPrompt: viewModel.offerReminderPrompt,
                 onAcceptReminder: { Task { await viewModel.acceptReminderPrompt() } },

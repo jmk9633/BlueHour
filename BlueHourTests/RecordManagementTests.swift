@@ -183,4 +183,36 @@ final class RecordManagementTests: XCTestCase {
         XCTAssertEqual(updated?.analysis?.title, "이전 하늘", "이전 하늘(analysis)은 유지돼야 함")
         XCTAssertEqual(vm.state, .result)
     }
+
+    // MARK: - 5. 기록 삭제 → 기록과 연결된 음성 파일을 함께 지운다 (F-MDQVXP)
+
+    func test_deleteEntry_removesEntryAndAudio() async {
+        let entry = seededEntry(recordingName: "del.m4a", analysis: oldSky())
+        let repository = FakeDiaryRepository(seed: [entry])
+        let audio = FakeAudioRecordingService()
+        let vm = SkyDetailViewModel(entry: entry, repository: repository, audioService: audio)
+
+        await vm.deleteEntry()
+
+        let deletedAudio = await audio.wasDeleted("del.m4a")
+        XCTAssertTrue(deletedAudio, "삭제 시 연결된 음성 파일도 지워져야 합니다.")
+        let deletedIDs = await repository.deletedIDs
+        XCTAssertTrue(deletedIDs.contains(entry.id), "기록이 영구 삭제돼야 합니다.")
+        let remaining = await repository.saved
+        XCTAssertTrue(remaining.isEmpty)
+    }
+
+    func test_deleteEntry_음성없는기록도_삭제된다() async {
+        let entry = seededEntry(recordingName: nil, analysis: oldSky())
+        let repository = FakeDiaryRepository(seed: [entry])
+        let audio = FakeAudioRecordingService()
+        let vm = SkyDetailViewModel(entry: entry, repository: repository, audioService: audio)
+
+        await vm.deleteEntry()
+
+        let deletedIDs = await repository.deletedIDs
+        XCTAssertTrue(deletedIDs.contains(entry.id))
+        let deletedNames = await audio.deletedFileNames
+        XCTAssertTrue(deletedNames.isEmpty, "음성이 없으면 파일 삭제를 시도하지 않아야 합니다.")
+    }
 }

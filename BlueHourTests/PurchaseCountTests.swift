@@ -298,4 +298,36 @@ final class PurchaseCountTests: XCTestCase {
         let message3 = await failing.restore()
         XCTAssertEqual(message3, "잠시 후 다시 시도해 주세요.")
     }
+
+    // MARK: - 구매 승인 대기(pending) · 상품 로드 실패 (F-MVCMCF)
+
+    func test_purchasePending_승인대기면_pending표시하고_해제안함() async {
+        let controller = PurchaseController(service: FakePurchaseService(purchaseOutcome: .pending))
+        let ok = await controller.purchase()
+        XCTAssertFalse(ok, "승인 대기는 성공(true)이 아니어야 합니다.")
+        XCTAssertTrue(controller.purchasePending, "승인 대기 안내를 위해 pending이 켜져야 합니다.")
+        XCTAssertFalse(controller.isUnlocked, "승인 전에는 해제되지 않아야 합니다.")
+    }
+
+    func test_purchaseSuccess_성공하면_해제되고_pending아님() async {
+        let controller = PurchaseController(service: FakePurchaseService(purchaseOutcome: .success))
+        let ok = await controller.purchase()
+        XCTAssertTrue(ok)
+        XCTAssertTrue(controller.isUnlocked)
+        XCTAssertFalse(controller.purchasePending)
+    }
+
+    func test_productLoadFailure_상품못불러오면_loadFailed() async {
+        let controller = PurchaseController(service: FakePurchaseService(productInfo: nil))
+        await controller.loadProduct()
+        XCTAssertTrue(controller.loadFailed, "상품 정보를 못 불러오면 '잠시 후 다시 시도' 안내를 위해 loadFailed가 켜져야 합니다.")
+        XCTAssertNil(controller.displayPrice)
+    }
+
+    func test_productLoadSuccess_가격을_불러온다() async {
+        let controller = PurchaseController(service: FakePurchaseService(productInfo: StoreProductInfo(displayPrice: "₩4,400")))
+        await controller.loadProduct()
+        XCTAssertFalse(controller.loadFailed)
+        XCTAssertEqual(controller.displayPrice, "₩4,400")
+    }
 }

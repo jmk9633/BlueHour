@@ -80,22 +80,27 @@ actor FakeSkyAnalysisService: SkyAnalysisServiceProtocol {
     var available: Bool
     var deviceEligible: Bool
     var errorToThrow: Error?
+    var reasonWhenUnavailable: SkyUnavailableReason?
 
     init(
         result: SkyAnalysis = FakeSkyAnalysisService.defaultSky,
         available: Bool = true,
         deviceEligible: Bool = true,
-        errorToThrow: Error? = nil
+        errorToThrow: Error? = nil,
+        reasonWhenUnavailable: SkyUnavailableReason? = nil
     ) {
         self.result = result
         self.available = available
         self.deviceEligible = deviceEligible
         self.errorToThrow = errorToThrow
+        self.reasonWhenUnavailable = reasonWhenUnavailable
     }
 
     func isAvailable() async -> Bool { available }
 
     func isDeviceEligible() async -> Bool { deviceEligible }
+
+    func unavailableReason() async -> SkyUnavailableReason? { reasonWhenUnavailable }
 
     func analyze(text: String) async throws -> SkyAnalysis {
         if let errorToThrow { throw errorToThrow }
@@ -128,6 +133,8 @@ actor FakeSkyGenerator: GeneratedSkyProducing {
     func isAvailable() async -> Bool { available }
 
     func isDeviceEligible() async -> Bool { available }
+
+    func unavailableReason() async -> SkyUnavailableReason? { available ? nil : .modelNotReady }
 
     func produce(text: String, reinforced: Bool) async throws -> SkyAnalysis {
         let index = callCount

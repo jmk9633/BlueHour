@@ -115,13 +115,33 @@ actor FoundationModelSkyGenerator: GeneratedSkyProducing {
         return true
     }
 
+    func unavailableReason() async -> SkyUnavailableReason? {
+        switch SystemLanguageModel.default.availability {
+        case .available:
+            return nil
+        case .unavailable(.deviceNotEligible):
+            return .deviceNotEligible
+        case .unavailable(.appleIntelligenceNotEnabled):
+            return .appleIntelligenceNotEnabled
+        case .unavailable(.modelNotReady):
+            return .modelNotReady
+        case .unavailable:
+            // 알 수 없는 미지원 사유는 '준비 중'에 준해 담담히 안내한다.
+            return .modelNotReady
+        @unknown default:
+            return .modelNotReady
+        }
+    }
+
     func produce(text: String, reinforced: Bool) async throws -> SkyAnalysis {
         // 1. 모델 사용 가능 여부 확인
         switch SystemLanguageModel.default.availability {
         case .available:
             break
         case .unavailable(let reason):
+            #if DEBUG
             print("⚠️ Foundation Model 사용 불가. 이유:", reason)
+            #endif
             throw SkyAnalysisError.modelUnavailable
         @unknown default:
             throw SkyAnalysisError.modelUnavailable
@@ -147,7 +167,9 @@ actor FoundationModelSkyGenerator: GeneratedSkyProducing {
             ).content
             return Self.toDomain(generated)
         } catch {
+            #if DEBUG
             print("⚠️ SkyAnalysis 생성 실패:", error)
+            #endif
             throw SkyAnalysisError.analysisFailed
         }
     }
@@ -156,7 +178,7 @@ actor FoundationModelSkyGenerator: GeneratedSkyProducing {
 
     private static func toDomain(_ g: GeneratedSky) -> SkyAnalysis {
         SkyAnalysis(
-            weatherType: SkyWeatherType(rawValue: g.weatherType) ?? .partlyCloudy,
+            weatherType: SkyWeatherType(fromModelRawValue: g.weatherType),
             title: g.title,
             summary: g.summary,
             emotionKeywords: g.emotionKeywords,

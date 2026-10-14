@@ -164,6 +164,7 @@ struct SkyCalendarView: View {
                     } label: {
                         Image(systemName: "chevron.left")
                     }
+                    .accessibilityLabel("이전 달")
 
                     Spacer()
 
@@ -189,6 +190,7 @@ struct SkyCalendarView: View {
                     } label: {
                         Image(systemName: "chevron.right")
                     }
+                    .accessibilityLabel("다음 달")
                 }
                 .foregroundStyle(Color.bhTextSecondary)
 

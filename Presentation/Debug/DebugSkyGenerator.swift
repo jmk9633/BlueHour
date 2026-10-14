@@ -34,6 +34,16 @@ struct DebugSkyGenerator: GeneratedSkyProducing {
         }
     }
 
+    func unavailableReason() async -> SkyUnavailableReason? {
+        switch await currentAIState() {
+        case .follow: return await wrapped.unavailableReason()
+        case .available: return nil
+        case .deviceNotEligible: return .deviceNotEligible
+        case .appleIntelligenceNotEnabled: return .appleIntelligenceNotEnabled
+        case .modelNotReady: return .modelNotReady
+        }
+    }
+
     func produce(text: String, reinforced: Bool) async throws -> SkyAnalysis {
         // 1) 사용 가능 상태 강제: 불가 계열이면 modelUnavailable.
         switch await currentAIState() {

@@ -19,6 +19,12 @@ enum SkyWeatherType: String, Codable, CaseIterable, Sendable {
     case moonlight
     case lightThroughClouds
 
+    /// 모델이 돌려준 weatherType 문자열을 안전하게 변환한다.
+    /// 목록에 없는 값이면 구름 조금(partlyCloudy)으로 대체한다. (F-MEASPV / PL-XNEFLR)
+    init(fromModelRawValue raw: String) {
+        self = SkyWeatherType(rawValue: raw) ?? .partlyCloudy
+    }
+
     var displayName: String {
         switch self {
         case .clearNight:        return "맑은 밤"
